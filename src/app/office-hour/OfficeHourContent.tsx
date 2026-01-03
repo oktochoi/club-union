@@ -28,7 +28,7 @@ interface RentalRequest {
   returnDate: string;
   totalPrice: number;
   deposit: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'returned';
   applicant: string;
   club: string;
   contact: string;
@@ -238,6 +238,8 @@ export default function OfficeHourContent() {
         return '승인 완료';
       case 'rejected':
         return '거절됨';
+      case 'returned':
+        return '반납 완료';
       default:
         return status;
     }
@@ -251,6 +253,8 @@ export default function OfficeHourContent() {
         return 'bg-green-100 text-green-800';
       case 'rejected':
         return 'bg-red-100 text-red-800';
+      case 'returned':
+        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }

@@ -35,22 +35,22 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 공개 경로 (인증 불필요)
-  const publicPaths = ['/login', '/register'];
-  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
+  const publicPaths = ['/login', '/register', '/'];
+  const isPublicPath = publicPaths.some((path) => pathname === path || (path !== '/' && pathname.startsWith(path)));
 
   // 관리자 전용 경로
   const adminPaths = ['/admin'];
   const isAdminPath = adminPaths.some((path) => pathname.startsWith(path));
 
   // 인증이 필요한 경로
-  const protectedPaths = ['/reservation', '/office-hour', '/notice', '/suggestion'];
+  const protectedPaths = ['/reservation', '/office-hour', '/notice', '/suggestion', '/user'];
   const isProtectedPath = protectedPaths.some((path) => pathname.startsWith(path));
 
-  // 홈 페이지는 인증 필요
+  // 홈 페이지
   const isHomePage = pathname === '/';
 
-  // 공개 경로이고 이미 로그인한 경우
-  if (isPublicPath && user) {
+  // 루트 경로이고 이미 로그인한 경우
+  if (isHomePage && user) {
     // users 테이블에서 사용자 정보 확인
     const { data: userData } = await supabase
       .from('users')
@@ -59,17 +59,34 @@ export async function middleware(request: NextRequest) {
       .single();
 
     if (userData) {
-      // 관리자는 admin 페이지로, 일반 사용자는 홈으로
+      // 관리자는 admin 페이지로, 일반 사용자는 /user로
       if (userData.role === 'admin') {
         return NextResponse.redirect(new URL('/admin', request.url));
       } else {
-        return NextResponse.redirect(new URL('/', request.url));
+        return NextResponse.redirect(new URL('/user', request.url));
+      }
+    }
+  }
+
+  // 공개 경로(로그인/회원가입)이고 이미 로그인한 경우
+  if ((pathname === '/login' || pathname === '/register') && user) {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role, status')
+      .eq('id', user.id)
+      .single();
+
+    if (userData) {
+      if (userData.role === 'admin') {
+        return NextResponse.redirect(new URL('/admin', request.url));
+      } else {
+        return NextResponse.redirect(new URL('/user', request.url));
       }
     }
   }
 
   // 인증이 필요한 경로인데 로그인하지 않은 경우
-  if ((isProtectedPath || isHomePage) && !user) {
+  if (isProtectedPath && !user) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
