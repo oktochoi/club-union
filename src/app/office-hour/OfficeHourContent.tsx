@@ -3,6 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import RentalForm from './RentalForm';
+import { getRentalItems, getMyRentalRequests, deleteRentalRequest, createRentalRequest } from '@/lib/supabase/rentals';
+import { getCurrentUser } from '@/lib/supabase/user';
+import { getAccountInfo } from '@/lib/supabase/account';
 
 interface RentalItem {
   id: string;
@@ -45,154 +48,86 @@ export default function OfficeHourContent() {
     accountHolder: '총동아리연합회'
   });
 
-  const [rentalItems, setRentalItems] = useState<RentalItem[]>([
-    {
-      id: '1',
-      name: '무선 마이크',
-      category: '음향장비',
-      price: 5000,
-      available: 8,
-      total: 10,
-      description: '고품질 무선 마이크로 공연 및 발표에 최적화되어 있습니다.',
-      image: 'https://readdy.ai/api/search-image?query=professional%20wireless%20microphone%20on%20white%20background%2C%20clean%20product%20photography%2C%20modern%20design%2C%20high%20quality%20audio%20equipment&width=300&height=200&seq=mic1&orientation=landscape',
-      deposit: 20000
-    },
-    {
-      id: '2',
-      name: '포터블 스피커',
-      category: '음향장비',
-      price: 8000,
-      available: 5,
-      total: 8,
-      description: '대용량 배터리와 강력한 출력을 자랑하는 포터블 스피커입니다.',
-      image: 'https://readdy.ai/api/search-image?query=portable%20bluetooth%20speaker%20black%20color%20on%20white%20background%2C%20professional%20product%20photography%2C%20modern%20wireless%20speaker%20design&width=300&height=200&seq=speaker1&orientation=landscape',
-      deposit: 50000
-    },
-    {
-      id: '3',
-      name: '프로젝터',
-      category: '영상장비',
-      price: 15000,
-      available: 3,
-      total: 5,
-      description: 'Full HD 해상도를 지원하는 고성능 프로젝터입니다.',
-      image: 'https://readdy.ai/api/search-image?query=modern%20projector%20white%20background%2C%20professional%20presentation%20equipment%2C%20clean%20product%20photography%2C%20business%20projector%20design&width=300&height=200&seq=projector1&orientation=landscape',
-      deposit: 100000
-    },
-    {
-      id: '4',
-      name: '노트북 (대여용)',
-      category: '컴퓨터',
-      price: 10000,
-      available: 7,
-      total: 10,
-      description: '업무 및 발표용으로 최적화된 대여용 노트북입니다.',
-      image: 'https://readdy.ai/api/search-image?query=modern%20laptop%20computer%20open%20on%20white%20background%2C%20clean%20product%20photography%2C%20silver%20laptop%20design%2C%20professional%20business%20laptop&width=300&height=200&seq=laptop1&orientation=landscape',
-      deposit: 200000
-    },
-    {
-      id: '5',
-      name: '카메라 (DSLR)',
-      category: '카메라',
-      price: 20000,
-      available: 2,
-      total: 4,
-      description: '전문적인 사진 촬영을 위한 DSLR 카메라입니다.',
-      image: 'https://readdy.ai/api/search-image?query=professional%20DSLR%20camera%20black%20color%20on%20white%20background%2C%20clean%20product%20photography%2C%20digital%20camera%20with%20lens%2C%20photography%20equipment&width=300&height=200&seq=camera1&orientation=landscape',
-      deposit: 300000
-    },
-    {
-      id: '6',
-      name: '삼각대',
-      category: '카메라',
-      price: 3000,
-      available: 6,
-      total: 8,
-      description: '카메라 및 캠코더용 안정적인 삼각대입니다.',
-      image: 'https://readdy.ai/api/search-image?query=professional%20camera%20tripod%20black%20color%20on%20white%20background%2C%20clean%20product%20photography%2C%20adjustable%20tripod%20legs%2C%20photography%20equipment&width=300&height=200&seq=tripod1&orientation=landscape',
-      deposit: 15000
-    },
-    {
-      id: '7',
-      name: '조명 세트',
-      category: '영상장비',
-      price: 12000,
-      available: 3,
-      total: 5,
-      description: '영상 촬영 및 사진 촬영용 LED 조명 세트입니다.',
-      image: 'https://readdy.ai/api/search-image?query=professional%20LED%20lighting%20kit%20on%20white%20background%2C%20clean%20product%20photography%2C%20video%20lighting%20equipment%2C%20adjustable%20studio%20lights&width=300&height=200&seq=light1&orientation=landscape',
-      deposit: 80000
-    },
-    {
-      id: '8',
-      name: '연장선 (10m)',
-      category: '기타',
-      price: 1000,
-      available: 12,
-      total: 15,
-      description: '10미터 길이의 안전한 연장선입니다.',
-      image: 'https://readdy.ai/api/search-image?query=10%20meter%20extension%20cord%20white%20background%2C%20clean%20product%20photography%2C%20electrical%20cable%20with%20multiple%20outlets%2C%20safety%20power%20strip&width=300&height=200&seq=cord1&orientation=landscape',
-      deposit: 5000
-    }
-  ]);
+  const [rentalItems, setRentalItems] = useState<RentalItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // 관리자가 수정한 물품 정보를 실시간으로 반영
+  // 물품 데이터 로드 (Supabase)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const interval = setInterval(() => {
-      // 관리자 재고 정보 동기화
-      const adminRentalItems = localStorage.getItem('adminRentalItems');
-      const adminInventory = localStorage.getItem('adminInventory');
-      
-      if (adminRentalItems) {
-        try {
-          const updatedItems = JSON.parse(adminRentalItems);
-          
-          // 관리자 재고 관리와 동기화
-          if (adminInventory) {
-            const inventoryItems = JSON.parse(adminInventory);
-            const syncedItems = updatedItems.map((item: any) => {
-              const inventoryItem = inventoryItems.find((inv: any) => inv.item === item.name);
-              if (inventoryItem) {
-                return {
-                  ...item,
-                  available: inventoryItem.current,
-                  total: inventoryItem.current + 5, // 기본 총량 설정
-                  image: item.image || `https://readdy.ai/api/search-image?query=modern%20$%7Bitem.name%7D%20product%20on%20white%20background%2C%20clean%20product%20photography%2C%20professional%20equipment&width=300&height=200&seq=${item.id}&orientation=landscape`
-                };
-              }
-              return {
-                ...item,
-                image: item.image || `https://readdy.ai/api/search-image?query=modern%20$%7Bitem.name%7D%20product%20on%20white%20background%2C%20clean%20product%20photography%2C%20professional%20equipment&width=300&height=200&seq=${item.id}&orientation=landscape`
-              };
-            });
-            setRentalItems(syncedItems);
-          } else {
-            // 이미지가 base64인 경우 그대로 사용, 아닌 경우 기본 이미지 유지
-            const itemsWithImages = updatedItems.map((item: any) => ({
-              ...item,
-              image: item.image || `https://readdy.ai/api/search-image?query=modern%20$%7Bitem.name%7D%20product%20on%20white%20background%2C%20clean%20product%20photography%2C%20professional%20equipment&width=300&height=200&seq=${item.id}&orientation=landscape`
-            }));
-            setRentalItems(itemsWithImages);
-          }
-        } catch (error) {
-          console.error('물품 정보 업데이트 오류:', error);
-        }
+    const loadRentalItems = async () => {
+      try {
+        setLoading(true);
+        const data = await getRentalItems(); // 활성화된 물품만 조회
+        setRentalItems(data.map(item => ({
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          price: item.price,
+          available: item.available,
+          total: item.total,
+          description: item.description || '',
+          deposit: item.deposit,
+          image: item.image || '',
+        })));
+      } catch (error) {
+        console.error('물품 로딩 오류:', error);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // 관리자의 계좌 정보 업데이트
-      const adminAccountInfo = typeof window !== 'undefined' ? localStorage.getItem('adminAccountInfo') : null;
-      if (adminAccountInfo) {
-        try {
-          const updatedAccount = JSON.parse(adminAccountInfo);
-          setAccountInfo(updatedAccount);
-        } catch (error) {
-          console.error('계좌 정보 업데이트 오류:', error);
-        }
+    loadRentalItems();
+    const interval = setInterval(loadRentalItems, 10000); // 10초마다 업데이트
+    return () => clearInterval(interval);
+  }, []);
+
+  // 내 대여 신청 데이터 로드 (Supabase)
+  useEffect(() => {
+    const loadMyRentals = async () => {
+      try {
+        const data = await getMyRentalRequests();
+        setMyRentals(data.map(req => ({
+          id: req.id,
+          itemId: req.item_id,
+          itemName: req.item_name || '',
+          quantity: req.quantity,
+          rentalDate: req.rental_date,
+          returnDate: req.return_date,
+          totalPrice: req.total_price,
+          deposit: req.deposit,
+          status: req.status,
+          applicant: req.applicant,
+          club: req.club || '',
+          contact: req.contact,
+          purpose: req.purpose || '',
+          createdAt: req.created_at,
+        })));
+      } catch (error) {
+        console.error('내 대여 신청 로딩 오류:', error);
       }
-    }, 2000); // 2초마다 확인
+    };
 
+    loadMyRentals();
+    const interval = setInterval(loadMyRentals, 5000); // 5초마다 업데이트
+    return () => clearInterval(interval);
+  }, []);
+
+  // 계좌 정보 로드 (Supabase)
+  useEffect(() => {
+    const loadAccountInfo = async () => {
+      try {
+        const data = await getAccountInfo();
+        setAccountInfo({
+          bank: data.bank,
+          accountNumber: data.account_number,
+          accountHolder: data.account_holder,
+        });
+      } catch (error) {
+        console.error('계좌 정보 로딩 오류:', error);
+      }
+    };
+
+    loadAccountInfo();
+    const interval = setInterval(loadAccountInfo, 10000); // 10초마다 업데이트
     return () => clearInterval(interval);
   }, []);
 
@@ -212,37 +147,87 @@ export default function OfficeHourContent() {
     return matchesCategory && matchesSearch;
   });
 
-  const handleRentalSubmit = (rentalData: any) => {
-    const newRental: RentalRequest = {
-      id: Date.now().toString(),
-      itemId: selectedItem!.id,
-      itemName: selectedItem!.name,
-      quantity: rentalData.quantity,
-      rentalDate: rentalData.rentalDate,
-      returnDate: rentalData.returnDate,
-      totalPrice: selectedItem!.price * rentalData.quantity * rentalData.days,
-      deposit: selectedItem!.deposit * rentalData.quantity,
-      status: 'pending',
-      applicant: rentalData.applicant,
-      club: rentalData.club,
-      contact: rentalData.contact,
-      purpose: rentalData.purpose,
-      createdAt: new Date().toISOString()
-    };
+  const handleRentalSubmit = async (rentalData: any) => {
+    if (!selectedItem) return;
 
-    setMyRentals(prev => [newRental, ...prev]);
-    
-    // 관리자에게 실시간으로 전송
-    if (typeof window !== 'undefined') {
-      const existingRequests = JSON.parse(localStorage.getItem('userRentalRequests') || '[]');
-      existingRequests.push(newRental);
-      localStorage.setItem('userRentalRequests', JSON.stringify(existingRequests));
+    try {
+      const user = await getCurrentUser();
+      if (!user) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
+      await createRentalRequest({
+        item_id: selectedItem.id,
+        quantity: rentalData.quantity,
+        rental_date: rentalData.rentalDate,
+        return_date: rentalData.returnDate,
+        total_price: selectedItem.price * rentalData.quantity * rentalData.days,
+        deposit: selectedItem.deposit * rentalData.quantity,
+        applicant: rentalData.applicant,
+        club: rentalData.club,
+        contact: rentalData.contact,
+        purpose: rentalData.purpose,
+      });
+
+      alert('대여 신청이 완료되었습니다. 관리자 승인 후 안내드리겠습니다.');
+      
+      // 데이터 다시 로드
+      const data = await getMyRentalRequests();
+      setMyRentals(data.map(req => ({
+        id: req.id,
+        itemId: req.item_id,
+        itemName: req.item_name || '',
+        quantity: req.quantity,
+        rentalDate: req.rental_date,
+        returnDate: req.return_date,
+        totalPrice: req.total_price,
+        deposit: req.deposit,
+        status: req.status,
+        applicant: req.applicant,
+        club: req.club || '',
+        contact: req.contact,
+        purpose: req.purpose || '',
+        createdAt: req.created_at,
+      })));
+      
+      setShowRentalForm(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error('대여 신청 오류:', error);
+      alert(error instanceof Error ? error.message : '대여 신청 중 오류가 발생했습니다.');
     }
-    
-    alert('대여 신청이 완료되었습니다. 관리자 승인 후 안내드리겠습니다.');
-    
-    setShowRentalForm(false);
-    setSelectedItem(null);
+  };
+
+  const handleCancelRental = async (rentalId: string) => {
+    if (!confirm('대여 신청을 취소하시겠습니까?')) return;
+
+    try {
+      await deleteRentalRequest(rentalId);
+      alert('대여 신청이 취소되었습니다.');
+      
+      // 데이터 다시 로드
+      const data = await getMyRentalRequests();
+      setMyRentals(data.map(req => ({
+        id: req.id,
+        itemId: req.item_id,
+        itemName: req.item_name || '',
+        quantity: req.quantity,
+        rentalDate: req.rental_date,
+        returnDate: req.return_date,
+        totalPrice: req.total_price,
+        deposit: req.deposit,
+        status: req.status,
+        applicant: req.applicant,
+        club: req.club || '',
+        contact: req.contact,
+        purpose: req.purpose || '',
+        createdAt: req.created_at,
+      })));
+    } catch (error) {
+      console.error('대여 취소 오류:', error);
+      alert(error instanceof Error ? error.message : '대여 취소 중 오류가 발생했습니다.');
+    }
   };
 
   const getStatusText = (status: string) => {
@@ -341,12 +326,20 @@ export default function OfficeHourContent() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">대여 가능 물품</h2>
             <div className="text-sm text-gray-600">
-              총 {filteredItems.length}개 물품
+              {loading ? '로딩 중...' : `총 ${filteredItems.length}개 물품`}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredItems.map((item) => (
+          {loading ? (
+            <div className="text-center py-12 bg-white rounded-lg border">
+              <div className="animate-pulse space-y-4">
+                <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto"></div>
+                <div className="h-64 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredItems.map((item) => (
               <div key={item.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
                 <div className="aspect-w-16 aspect-h-9">
                   <img
@@ -399,12 +392,17 @@ export default function OfficeHourContent() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
 
-          {filteredItems.length === 0 && (
+          {!loading && filteredItems.length === 0 && (
             <div className="text-center py-12 bg-white rounded-lg border">
-              <i className="ri-search-line text-4xl text-gray-400 mb-4"></i>
-              <p className="text-gray-600">검색 조건에 맞는 물품이 없습니다.</p>
+              <i className="ri-box-3-line text-4xl text-gray-400 mb-4"></i>
+              <p className="text-gray-600">
+                {searchTerm || selectedCategory !== 'all' 
+                  ? '검색 조건에 맞는 물품이 없습니다.' 
+                  : '등록된 물품이 없습니다. 관리자가 물품을 추가하면 여기에 표시됩니다.'}
+              </p>
             </div>
           )}
         </div>
@@ -451,6 +449,17 @@ export default function OfficeHourContent() {
                       <div className="text-sm text-gray-600 mt-1">
                         <span className="font-medium">보증금:</span> {rental.deposit.toLocaleString()}원
                       </div>
+                      {rental.status === 'pending' && (
+                        <div className="mt-3">
+                          <button
+                            onClick={() => handleCancelRental(rental.id)}
+                            className="w-full px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors"
+                          >
+                            <i className="ri-close-line mr-2"></i>
+                            신청 취소
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

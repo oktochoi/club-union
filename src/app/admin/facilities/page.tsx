@@ -184,6 +184,28 @@ export default function AdminFacilitiesPage() {
     return `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`;
   };
 
+  // 시간 문자열을 분 단위로 변환 (예: "16:00" -> 960)
+  const timeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + (minutes || 0);
+  };
+
+  // 시간대가 예약 범위 안에 포함되는지 확인
+  const isTimeSlotInRange = (timeSlot: string, reservationTime: string): boolean => {
+    if (!reservationTime.includes('-')) {
+      // 단일 시간대인 경우
+      return timeSlot === reservationTime;
+    }
+    
+    const [startTime, endTime] = reservationTime.split('-');
+    const slotMinutes = timeToMinutes(timeSlot);
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = timeToMinutes(endTime);
+    
+    // 시작 시간 포함, 끝 시간 포함 (21:00-21:00도 예약 가능하도록)
+    return slotMinutes >= startMinutes && slotMinutes <= endMinutes;
+  };
+
   // 특정 시설, 날짜, 시간대의 예약 현황 확인
   const getReservationStatus = (facilityName: string, date: string, timeSlot: string): {
     status: 'approved' | 'pending' | 'available';
@@ -194,8 +216,7 @@ export default function AdminFacilitiesPage() {
       r.facility === facilityName && 
       r.date === date && 
       r.status === 'approved' &&
-      (r.time === timeSlot || r.time?.includes(timeSlot) || 
-       (r.time?.includes('-') && r.time.split('-')[0] === timeSlot))
+      isTimeSlotInRange(timeSlot, r.time)
     );
 
     if (approvedReservation) {
@@ -207,8 +228,7 @@ export default function AdminFacilitiesPage() {
       r.facility === facilityName && 
       r.date === date && 
       r.status === 'pending' &&
-      (r.time === timeSlot || r.time?.includes(timeSlot) || 
-       (r.time?.includes('-') && r.time.split('-')[0] === timeSlot))
+      isTimeSlotInRange(timeSlot, r.time)
     );
 
     if (pendingReservation) {

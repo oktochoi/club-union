@@ -104,27 +104,45 @@ export default function ReservationTimeTable({
 
   const allTimeSlots = getAllTimeSlots();
 
+  // 시간 문자열을 분 단위로 변환 (예: "16:00" -> 960)
+  const timeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + (minutes || 0);
+  };
+
   // 예약 상태 확인 (Supabase에서)
   const getReservationStatus = (facilityId: string, date: string, time: string) => {
+    const timeMinutes = timeToMinutes(time);
+    
     // 승인된 예약만 확인 (pending은 예약 가능)
-    const approvedReservation = reservations.find((r: any) => 
-      r.facility_id === facilityId && 
-      r.date === date && 
-      r.status === 'approved' &&
-      (r.start_time === time || (r.start_time <= time && r.end_time > time))
-    );
+    const approvedReservation = reservations.find((r: any) => {
+      if (r.facility_id !== facilityId || r.date !== date || r.status !== 'approved') {
+        return false;
+      }
+      
+      const startMinutes = timeToMinutes(r.start_time);
+      const endMinutes = timeToMinutes(r.end_time);
+      
+      // 시작 시간 포함, 끝 시간 포함 (21:00-21:00도 예약 가능하도록)
+      return timeMinutes >= startMinutes && timeMinutes <= endMinutes;
+    });
 
     if (approvedReservation) {
       return 'approved';
     }
 
     // 대기 중인 예약 확인
-    const pendingReservation = reservations.find((r: any) => 
-      r.facility_id === facilityId && 
-      r.date === date && 
-      r.status === 'pending' &&
-      (r.start_time === time || (r.start_time <= time && r.end_time > time))
-    );
+    const pendingReservation = reservations.find((r: any) => {
+      if (r.facility_id !== facilityId || r.date !== date || r.status !== 'pending') {
+        return false;
+      }
+      
+      const startMinutes = timeToMinutes(r.start_time);
+      const endMinutes = timeToMinutes(r.end_time);
+      
+      // 시작 시간 포함, 끝 시간 포함
+      return timeMinutes >= startMinutes && timeMinutes <= endMinutes;
+    });
 
     return pendingReservation ? 'pending' : null;
   };

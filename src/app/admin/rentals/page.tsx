@@ -4,6 +4,17 @@
 import { useState, useEffect } from 'react';
 import AuthCheck from '@/components/AuthCheck';
 import AdminHeader from '../AdminHeader';
+import {
+  getRentalItems,
+  createRentalItem,
+  updateRentalItem,
+  deleteRentalItem,
+  getRentalRequests,
+  updateRentalRequest,
+  type RentalItem as RentalItemType,
+  type RentalRequest as RentalRequestType,
+} from '@/lib/supabase/rentals';
+import { getAccountInfo, updateAccountInfo } from '@/lib/supabase/account';
 
 interface RentalItem {
   id: string;
@@ -41,55 +52,113 @@ export default function AdminRentalsPage() {
   const [editingItem, setEditingItem] = useState<RentalItem | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<RentalRequest | null>(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
 
   const [rentalItems, setRentalItems] = useState<RentalItem[]>([]);
-
   const [rentalRequests, setRentalRequests] = useState<RentalRequest[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [accountInfo, setAccountInfo] = useState({
     bank: 'KB국민은행',
     accountNumber: '123456-78-901234',
     accountHolder: '총동아리연합회'
   });
+  const [loadingAccount, setLoadingAccount] = useState(true);
 
-  // 로컬 스토리지와 실시간 동기화
+  // 계좌 정보 로드
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    // 관리자가 수정한 물품 정보를 로컬 스토리지에 저장
-    localStorage.setItem('adminRentalItems', JSON.stringify(rentalItems));
-  }, [rentalItems]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    // 사용자의 대여 신청을 실시간으로 확인
-    const interval = setInterval(() => {
-      const userRentalRequests = localStorage.getItem('userRentalRequests');
-      if (userRentalRequests) {
-        try {
-          const newRequests = JSON.parse(userRentalRequests);
-          setRentalRequests(prev => {
-            const existingIds = prev.map(r => r.id);
-            const filteredNewRequests = newRequests.filter((r: RentalRequest) => !existingIds.includes(r.id));
-            if (filteredNewRequests.length > 0) {
-              // 새로운 신청이 있을 때 알림
-              if (Notification.permission === 'granted') {
-                new Notification('새 대여 신청', {
-                  body: `${filteredNewRequests[0].club}에서 ${filteredNewRequests[0].itemName} 대여를 신청했습니다.`,
-                  icon: '/favicon.ico'
-                });
-              }
-              return [...prev, ...filteredNewRequests];
-            }
-            return prev;
-          });
-        } catch (error) {
-          console.error('대여 신청 정보 업데이트 오류:', error);
-        }
+    const loadAccountInfo = async () => {
+      try {
+        setLoadingAccount(true);
+        const data = await getAccountInfo();
+        setAccountInfo({
+          bank: data.bank,
+          accountNumber: data.account_number,
+          accountHolder: data.account_holder,
+        });
+      } catch (error) {
+        console.error('계좌 정보 로딩 오류:', error);
+      } finally {
+        setLoadingAccount(false);
       }
-    }, 2000); // 2초마다 확인
+    };
+
+    loadAccountInfo();
+    const interval = setInterval(loadAccountInfo, 10000); // 10초마다 업데이트
+    return () => clearInterval(interval);
+  }, []);
+
+  // 물품 데이터 로드
+  useEffect(() => {
+    const loadRentalItems = async () => {
+      try {
+        const data = await getRentalItems(true); // 비활성화된 것도 포함
+        setRentalItems(data.map(item => ({
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          price: item.price,
+          available: item.available,
+          total: item.total,
+          description: item.description || '',
+          deposit: item.deposit,
+          image: item.image || '',
+        })));
+      } catch (error) {
+        console.error('물품 로딩 오류:', error);
+      }
+    };
+
+    loadRentalItems();
+    const interval = setInterval(loadRentalItems, 10000); // 10초마다 업데이트
+    return () => clearInterval(interval);
+  }, []);
+
+  // 대여 신청 데이터 로드
+  useEffect(() => {
+    const loadRentalRequests = async () => {
+      try {
+        setLoading(true);
+        const data = await getRentalRequests();
+        setRentalRequests(data.map(req => ({
+          id: req.id,
+          itemId: req.item_id,
+          itemName: req.item_name || '',
+          quantity: req.quantity,
+          rentalDate: req.rental_date,
+          returnDate: req.return_date,
+          totalPrice: req.total_price,
+          deposit: req.deposit,
+          status: req.status,
+          applicant: req.applicant,
+          club: req.club || '',
+          contact: req.contact,
+          purpose: req.purpose || '',
+          createdAt: req.created_at,
+        })));
+
+        // 새로운 신청이 있을 때 알림
+        if (typeof window !== 'undefined' && Notification.permission === 'granted') {
+          const pendingCount = data.filter(r => r.status === 'pending').length;
+          if (pendingCount > 0) {
+            new Notification('새 대여 신청', {
+              body: `승인 대기 중인 대여 신청이 ${pendingCount}건 있습니다.`,
+              icon: '/favicon.ico'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('대여 신청 로딩 오류:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRentalRequests();
+    const interval = setInterval(loadRentalRequests, 5000); // 5초마다 업데이트
 
     // 알림 권한 요청
-    if (Notification.permission === 'default') {
+    if (typeof window !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission();
     }
 
@@ -100,102 +169,102 @@ export default function AdminRentalsPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    // 이미지 파일 처리
-    const imageFile = formData.get('image') as File;
-    let imageUrl = editingItem?.image || '';
-    
-    if (imageFile && imageFile.size > 0) {
-      // 파일을 base64로 변환하여 localStorage에 저장
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        if (!e.target?.result || typeof e.target.result !== 'string') {
-          alert('이미지 파일을 읽을 수 없습니다.');
-          return;
-        }
-        
-        const base64String = e.target.result;
-        
-        const itemData: RentalItem = {
-          id: editingItem ? editingItem.id : Date.now().toString(),
+    try {
+      // 이미지 파일 처리
+      const imageFile = formData.get('image') as File;
+      let imageBase64 = editingItem?.image || null;
+      
+      if (imageFile && imageFile.size > 0) {
+        const reader = new FileReader();
+        const imagePromise = new Promise<string>((resolve, reject) => {
+          reader.onload = (e) => {
+            if (!e.target?.result || typeof e.target.result !== 'string') {
+              reject(new Error('이미지 파일을 읽을 수 없습니다.'));
+              return;
+            }
+            resolve(e.target.result);
+          };
+          reader.onerror = reject;
+        });
+        reader.readAsDataURL(imageFile);
+        imageBase64 = await imagePromise;
+      }
+
+      if (editingItem) {
+        // 수정
+        await updateRentalItem(editingItem.id, {
           name: formData.get('name') as string,
           category: formData.get('category') as string,
           price: parseInt(formData.get('price') as string),
           deposit: parseInt(formData.get('deposit') as string),
           total: parseInt(formData.get('total') as string),
-          available: editingItem ? editingItem.available : parseInt(formData.get('total') as string),
           description: formData.get('description') as string,
-          image: base64String
-        };
-
-        try {
-          if (editingItem) {
-            setRentalItems(prev => 
-              prev.map(item => 
-                item.id === editingItem.id 
-                  ? { ...itemData, available: Math.min(itemData.total, editingItem.available) }
-                  : item
-              )
-            );
-            alert('물품이 수정되었습니다.');
-          } else {
-            setRentalItems(prev => [...prev, itemData]);
-            alert('새 물품이 추가되었습니다.');
-          }
-          
-          setShowItemModal(false);
-          setEditingItem(null);
-          
-        } catch (error) {
-          alert('물품 저장 중 오류가 발생했습니다.');
-        }
-      };
-      reader.readAsDataURL(imageFile);
-    } else {
-      // 이미지가 없는 경우 기존 로직 실행
-      const itemData: RentalItem = {
-        id: editingItem ? editingItem.id : Date.now().toString(),
-        name: formData.get('name') as string,
-        category: formData.get('category') as string,
-        price: parseInt(formData.get('price') as string),
-        deposit: parseInt(formData.get('deposit') as string),
-        total: parseInt(formData.get('total') as string),
-        available: editingItem ? editingItem.available : parseInt(formData.get('total') as string),
-        description: formData.get('description') as string,
-        image: imageUrl || `https://readdy.ai/api/search-image?query=modern%20$%7BformData.get%28name%29%7D%20product%20on%20white%20background%2C%20clean%20product%20photography%2C%20professional%20equipment&width=300&height=200&seq=${Date.now()}&orientation=landscape`
-      };
-
-      try {
-        if (editingItem) {
-          setRentalItems(prev => 
-            prev.map(item => 
-              item.id === editingItem.id 
-                ? { ...itemData, available: Math.min(itemData.total, editingItem.available) }
-                : item
-            )
-          );
-          alert('물품이 수정되었습니다.');
-        } else {
-          setRentalItems(prev => [...prev, itemData]);
-          alert('새 물품이 추가되었습니다.');
-        }
-        
-        setShowItemModal(false);
-        setEditingItem(null);
-        
-      } catch (error) {
-        alert('물품 저장 중 오류가 발생했습니다.');
+          image: imageBase64 || undefined,
+        });
+        alert('물품이 수정되었습니다.');
+      } else {
+        // 추가
+        await createRentalItem({
+          name: formData.get('name') as string,
+          category: formData.get('category') as string,
+          price: parseInt(formData.get('price') as string),
+          deposit: parseInt(formData.get('deposit') as string),
+          total: parseInt(formData.get('total') as string),
+          description: formData.get('description') as string,
+          image: imageBase64 || undefined,
+        });
+        alert('새 물품이 추가되었습니다.');
       }
+      
+      // 데이터 다시 로드
+      const data = await getRentalItems(true);
+      setRentalItems(data.map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        price: item.price,
+        available: item.available,
+        total: item.total,
+        description: item.description || '',
+        deposit: item.deposit,
+        image: item.image || '',
+      })));
+      
+      setShowItemModal(false);
+      setEditingItem(null);
+    } catch (error) {
+      console.error('물품 저장 오류:', error);
+      alert(error instanceof Error ? error.message : '물품 저장 중 오류가 발생했습니다.');
     }
   };
 
-  const handleItemDelete = (itemId: string) => {
-    if (confirm('이 물품을 삭제하시겠습니까?')) {
-      setRentalItems(prev => prev.filter(item => item.id !== itemId));
+  const handleItemDelete = async (itemId: string) => {
+    if (!confirm('이 물품을 삭제하시겠습니까?')) return;
+    
+    try {
+      await deleteRentalItem(itemId);
       alert('물품이 삭제되었습니다.');
+      
+      // 데이터 다시 로드
+      const data = await getRentalItems(true);
+      setRentalItems(data.map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        price: item.price,
+        available: item.available,
+        total: item.total,
+        description: item.description || '',
+        deposit: item.deposit,
+        image: item.image || '',
+      })));
+    } catch (error) {
+      console.error('물품 삭제 오류:', error);
+      alert(error instanceof Error ? error.message : '물품 삭제 중 오류가 발생했습니다.');
     }
   };
 
-  const handleRequestAction = async (requestId: string, action: 'approve' | 'reject', reason?: string) => {
+  const handleRequestAction = async (requestId: string, action: 'approve' | 'reject', reason?: string, adminNotes?: string) => {
     // 이미 처리된 요청인지 확인
     const currentRequest = rentalRequests.find(r => r.id === requestId);
     if (!currentRequest || currentRequest.status !== 'pending') {
@@ -204,51 +273,64 @@ export default function AdminRentalsPage() {
     }
 
     try {
-      const request = rentalRequests.find(r => r.id === requestId);
-      if (!request) return;
-
       if (action === 'approve') {
         // 재고 확인
-        const currentItem = rentalItems.find(item => item.id === request.itemId);
-        if (!currentItem || currentItem.available < request.quantity) {
+        const currentItem = rentalItems.find(item => item.id === currentRequest.itemId);
+        if (!currentItem || currentItem.available < currentRequest.quantity) {
           alert('재고가 부족합니다. 현재 재고를 확인해주세요.');
           return;
         }
-
-        // 재고 감소
-        setRentalItems(prev => 
-          prev.map(item => 
-            item.id === request.itemId 
-              ? { ...item, available: Math.max(0, item.available - request.quantity) }
-              : item
-          )
-        );
       }
 
       // 대여 신청 상태 업데이트
-      setRentalRequests(prev => 
-        prev.map(request => 
-          request.id === requestId 
-            ? { ...request, status: action === 'approve' ? 'approved' : 'rejected' }
-            : request
-        )
-      );
-
-      // 사용자 대여 요청도 동기화
-      if (typeof window !== 'undefined') {
-        const userRentalRequests = JSON.parse(localStorage.getItem('userRentalRequests') || '[]');
-        const updatedUserRequests = userRentalRequests.map((r: any) => 
-          r.id === requestId ? { ...r, status: action === 'approve' ? 'approved' : 'rejected' } : r
-        );
-        localStorage.setItem('userRentalRequests', JSON.stringify(updatedUserRequests));
-      }
+      await updateRentalRequest(requestId, {
+        status: action === 'approve' ? 'approved' : 'rejected',
+        rejection_reason: action === 'reject' ? reason || null : null,
+        admin_notes: adminNotes || null,
+      });
 
       alert(`대여 신청이 ${action === 'approve' ? '승인' : '거절'}되었습니다.`);
       setShowRequestModal(false);
+      setShowApprovalModal(false);
       setSelectedRequest(null);
       
+      // 데이터 다시 로드
+      const [itemsData, requestsData] = await Promise.all([
+        getRentalItems(true),
+        getRentalRequests(),
+      ]);
+      
+      setRentalItems(itemsData.map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        price: item.price,
+        available: item.available,
+        total: item.total,
+        description: item.description || '',
+        deposit: item.deposit,
+        image: item.image || '',
+      })));
+      
+      setRentalRequests(requestsData.map(req => ({
+        id: req.id,
+        itemId: req.item_id,
+        itemName: req.item_name || '',
+        quantity: req.quantity,
+        rentalDate: req.rental_date,
+        returnDate: req.return_date,
+        totalPrice: req.total_price,
+        deposit: req.deposit,
+        status: req.status,
+        applicant: req.applicant,
+        club: req.club || '',
+        contact: req.contact,
+        purpose: req.purpose || '',
+        createdAt: req.created_at,
+      })));
     } catch (error) {
-      alert('처리 중 오류가 발생했습니다.');
+      console.error('대여 신청 처리 오류:', error);
+      alert(error instanceof Error ? error.message : '처리 중 오류가 발생했습니다.');
     }
   };
 
@@ -256,18 +338,25 @@ export default function AdminRentalsPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const newAccountInfo = {
-      bank: formData.get('bank') as string,
-      accountNumber: formData.get('accountNumber') as string,
-      accountHolder: formData.get('accountHolder') as string
-    };
+    try {
+      const updated = await updateAccountInfo({
+        bank: formData.get('bank') as string,
+        account_number: formData.get('accountNumber') as string,
+        account_holder: formData.get('accountHolder') as string,
+      });
 
-    setAccountInfo(newAccountInfo);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('adminAccountInfo', JSON.stringify(newAccountInfo));
+      setAccountInfo({
+        bank: updated.bank,
+        accountNumber: updated.account_number,
+        accountHolder: updated.account_holder,
+      });
+
+      alert('계좌 정보가 저장되었습니다.');
+      setShowAccountModal(false);
+    } catch (error) {
+      console.error('계좌 정보 저장 오류:', error);
+      alert(error instanceof Error ? error.message : '계좌 정보 저장 중 오류가 발생했습니다.');
     }
-    alert('계좌 정보가 저장되었습니다.');
-    setShowAccountModal(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -399,7 +488,10 @@ export default function AdminRentalsPage() {
                       {request.status === 'pending' && (
                         <div className="flex space-x-2 pt-3 border-t">
                           <button
-                            onClick={() => handleRequestAction(request.id, 'approve')}
+                            onClick={() => {
+                              setSelectedRequest(request);
+                              setShowApprovalModal(true);
+                            }}
                             className="px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 whitespace-nowrap"
                           >
                             승인
@@ -720,6 +812,78 @@ export default function AdminRentalsPage() {
                     className="flex-1 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
                   >
                     {editingItem ? '수정하기' : '추가하기'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 승인 모달 */}
+      {showApprovalModal && selectedRequest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">대여 신청 승인</h3>
+                <button
+                  onClick={() => {
+                    setShowApprovalModal(false);
+                    setSelectedRequest(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <i className="ri-close-line text-xl"></i>
+                </button>
+              </div>
+
+              <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div className="text-sm text-green-700">
+                  <div><strong>물품:</strong> {selectedRequest.itemName}</div>
+                  <div><strong>신청자:</strong> {selectedRequest.club} - {selectedRequest.applicant}</div>
+                  <div><strong>수량:</strong> {selectedRequest.quantity}개</div>
+                  <div><strong>대여일:</strong> {selectedRequest.rentalDate}</div>
+                  <div><strong>반납일:</strong> {selectedRequest.returnDate}</div>
+                </div>
+              </div>
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const adminNotes = formData.get('adminNotes') as string;
+                handleRequestAction(selectedRequest.id, 'approve', undefined, adminNotes);
+              }} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    관리자 메모 (선택)
+                  </label>
+                  <textarea
+                    name="adminNotes"
+                    maxLength={500}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                    placeholder="승인과 함께 전달할 메시지나 주의사항을 입력하세요"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">최대 500자</div>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowApprovalModal(false);
+                      setSelectedRequest(null);
+                    }}
+                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+                  >
+                    승인하기
                   </button>
                 </div>
               </form>
