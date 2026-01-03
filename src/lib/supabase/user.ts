@@ -172,7 +172,7 @@ export async function signInUser(email: string, password: string) {
 
     // 비밀번호 변경 요구가 있는 경우 무시 (Supabase Auth의 기본 동작)
     // app_metadata에서 비밀번호 변경 요구 확인
-    if (data.user.app_metadata?.password_change_required) {
+    if (authUser?.app_metadata?.password_change_required) {
       // 비밀번호 변경 요구를 무시하고 계속 진행
       // 필요시 나중에 비밀번호 변경 페이지로 리다이렉트할 수 있음
     }
