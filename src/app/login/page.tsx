@@ -63,17 +63,11 @@ export default function LoginPage() {
       // 로그인 성공 - 세션이 쿠키에 저장될 때까지 잠시 대기
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // 디버깅: role 확인
-      console.log('로그인 성공 - 사용자 role:', result.user.role);
-      console.log('전체 사용자 정보:', result.user);
-      
       // 전체 페이지 리로드를 통해 쿠키가 제대로 설정되도록 함
       if (typeof window !== 'undefined') {
         if (result.user.role === 'admin') {
-          console.log('관리자로 인식 - /admin으로 리다이렉트');
           window.location.href = '/admin';
         } else {
-          console.log('일반 사용자로 인식 - /user로 리다이렉트');
           window.location.href = '/user';
         }
       }

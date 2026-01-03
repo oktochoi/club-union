@@ -248,10 +248,6 @@ export default function AdminDashboard() {
                 마지막 업데이트: {new Date().toLocaleTimeString('ko-KR')}
               </div>
             </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <i className="ri-database-2-line"></i>
-              <span>모든 더미 데이터가 제거되었습니다</span>
-            </div>
           </div>
         </div>
 

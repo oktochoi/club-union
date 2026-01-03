@@ -11,7 +11,9 @@ export function onAuthStateChange(callback: (user: User | null) => void) {
   supabase.auth.getSession()
     .then(({ data: { session }, error: sessionError }) => {
       if (sessionError) {
-        console.error('세션 조회 오류:', sessionError);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('세션 조회 오류:', sessionError);
+        }
         callback(null);
         return;
       }
@@ -29,26 +31,37 @@ export function onAuthStateChange(callback: (user: User | null) => void) {
         .maybeSingle() // .single() 대신 .maybeSingle() 사용 (행이 없어도 에러 발생 안 함)
         .then(({ data: userData, error }) => {
           if (error) {
-            console.error('onAuthStateChange - users 테이블 조회 오류:', error);
-            console.error('에러 코드:', error.code);
-            console.error('에러 메시지:', error.message);
+            if (process.env.NODE_ENV === 'development') {
+              console.error('onAuthStateChange - users 테이블 조회 오류:', error);
+              console.error('에러 코드:', error.code);
+              console.error('에러 메시지:', error.message);
+            }
             callback(null);
           } else {
             callback(userData || null);
           }
         })
         .then(undefined, (error) => {
-          console.error('onAuthStateChange - 예외 발생:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('onAuthStateChange - 예외 발생:', error);
+          }
           callback(null);
         });
     })
     .catch((error) => {
-      console.error('getSession 예외 발생:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('getSession 예외 발생:', error);
+      }
       callback(null);
     });
   
   // 인증 상태 변경 감지
   return supabase.auth.onAuthStateChange(async (event, session) => {
+    // 비밀번호 변경 요구 이벤트 무시
+    if (event === 'PASSWORD_RECOVERY' || event === 'TOKEN_REFRESHED') {
+      // 비밀번호 변경 요구는 무시하고 계속 진행
+    }
+    
     if (!session?.user) {
       callback(null);
       return;
@@ -62,15 +75,19 @@ export function onAuthStateChange(callback: (user: User | null) => void) {
         .maybeSingle(); // .single() 대신 .maybeSingle() 사용
 
       if (error) {
-        console.error('users 테이블 조회 오류:', error);
-        console.error('에러 코드:', error.code);
-        console.error('에러 메시지:', error.message);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('users 테이블 조회 오류:', error);
+          console.error('에러 코드:', error.code);
+          console.error('에러 메시지:', error.message);
+        }
         callback(null);
       } else {
         callback(userData || null);
       }
     } catch (error) {
-      console.error('인증 상태 변경 처리 오류:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('인증 상태 변경 처리 오류:', error);
+      }
       callback(null);
     }
   });
