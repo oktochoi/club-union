@@ -286,7 +286,7 @@ export default function AdminFacilitiesPage() {
         await updateFacility(editingFacility.id, {
           name: facilityForm.name,
           capacity: facilityForm.capacity,
-          equipment: facilityForm.equipment || null,
+          equipment: facilityForm.equipment || undefined,
           time_slots: facilityForm.timeSlots
         });
         alert('시설이 수정되었습니다.');
@@ -295,7 +295,7 @@ export default function AdminFacilitiesPage() {
         const newFacility = await createFacility({
           name: facilityForm.name,
           capacity: facilityForm.capacity,
-          equipment: facilityForm.equipment || null,
+          equipment: facilityForm.equipment || undefined,
           time_slots: facilityForm.timeSlots
         });
         
