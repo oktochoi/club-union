@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -11,7 +10,6 @@ import { StatCard, Card, CardContent, EmptyState, Button, Badge } from '@/compon
 import { getReservations } from '@/lib/supabase/reservations';
 import { getFacilities } from '@/lib/supabase/facilities';
 import { getUsers } from '@/lib/supabase/user';
-import type { Reservation } from '@/lib/supabase/reservations';
 import type { Facility } from '@/lib/supabase/facilities';
 
 interface Notice {

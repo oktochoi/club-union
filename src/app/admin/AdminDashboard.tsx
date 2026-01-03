@@ -9,6 +9,14 @@ import { Button, Badge } from '@/components/ui';
 import type { User } from '@/types/user';
 import type { Facility } from '@/lib/supabase/facilities';
 
+interface LocalFacility {
+  id: string;
+  name: string;
+  capacity: string;
+  equipment: string;
+  timeSlots: string[];
+}
+
 export default function AdminDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -33,7 +41,7 @@ export default function AdminDashboard() {
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
   const [returnRequests, setReturnRequests] = useState<any[]>([]);
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
-  const [facilities, setFacilities] = useState<any[]>([]);
+  const [facilities, setFacilities] = useState<LocalFacility[]>([]);
   const router = useRouter();
 
   // Supabase에서 사용자 목록 로드

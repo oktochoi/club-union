@@ -64,10 +64,10 @@ export default function ReservationCalendar({ selectedDate, onDateSelect, select
   }, []);
 
   // 승인된 예약들 (관리자가 승인한 예약들을 실시간으로 가져오기)
-  const [approvedReservations, setApprovedReservations] = useState([]);
+  const [approvedReservations, setApprovedReservations] = useState<any[]>([]);
 
   // 승인 대기 중인 예약들
-  const [pendingReservations, setPendingReservations] = useState([]);
+  const [pendingReservations, setPendingReservations] = useState<any[]>([]);
 
   // 실시간으로 관리자의 승인된 예약을 반영
   useEffect(() => {

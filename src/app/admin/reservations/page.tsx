@@ -7,7 +7,7 @@ import { getReservations, updateReservation } from '@/lib/supabase/reservations'
 import { getUsers } from '@/lib/supabase/user';
 
 export default function AdminReservationsPage() {
-  const [reservations, setReservations] = useState([]);
+  const [reservations, setReservations] = useState<any[]>([]);
   const [selectedTab, setSelectedTab] = useState('all');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
