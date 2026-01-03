@@ -388,6 +388,118 @@ export default function AdminFacilitiesPage() {
     });
   };
 
+  // 예약 승인 모달 열기
+  const handleApproval = (reservation: Reservation) => {
+    setSelectedReservation(reservation);
+    setShowApprovalModal(true);
+  };
+
+  // 예약 거절 모달 열기
+  const handleRejection = (reservation: Reservation) => {
+    setSelectedReservation(reservation);
+    setShowRejectionModal(true);
+  };
+
+  // 예약 승인 제출
+  const handleApprovalSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedReservation) return;
+    
+    setIsProcessing(true);
+    
+    const formData = new FormData(e.currentTarget);
+    const adminNotes = formData.get('adminNotes') as string;
+
+    try {
+      // DB의 예약 ID를 찾아야 함
+      const dbReservations = await getReservationsByFacilityAndDate(
+        selectedFacility?.id || '',
+        selectedReservation.date
+      );
+      
+      const dbReservation = dbReservations.find(r => 
+        r.facility_name === selectedReservation.facility &&
+        r.date === selectedReservation.date &&
+        (r.start_time === selectedReservation.time || r.start_time?.includes(selectedReservation.time))
+      );
+
+      if (!dbReservation) {
+        throw new Error('예약을 찾을 수 없습니다.');
+      }
+
+      await updateReservation(dbReservation.id, {
+        status: 'approved',
+        admin_notes: adminNotes || null,
+      });
+      
+      alert('예약이 승인되었습니다.');
+      setShowApprovalModal(false);
+      setSelectedReservation(null);
+      
+      // 데이터 다시 로드
+      await loadReservations();
+      
+    } catch (error) {
+      console.error('예약 승인 오류:', error);
+      alert(error instanceof Error ? error.message : '예약 승인 중 오류가 발생했습니다.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // 예약 거절 제출
+  const handleRejectionSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedReservation) return;
+    
+    setIsProcessing(true);
+    
+    const formData = new FormData(e.currentTarget);
+    const rejectionReason = formData.get('rejectionReason') as string;
+
+    if (!rejectionReason || !rejectionReason.trim()) {
+      alert('거절 사유를 입력해주세요.');
+      setIsProcessing(false);
+      return;
+    }
+
+    try {
+      // DB의 예약 ID를 찾아야 함
+      const dbReservations = await getReservationsByFacilityAndDate(
+        selectedFacility?.id || '',
+        selectedReservation.date
+      );
+      
+      const dbReservation = dbReservations.find(r => 
+        r.facility_name === selectedReservation.facility &&
+        r.date === selectedReservation.date &&
+        (r.start_time === selectedReservation.time || r.start_time?.includes(selectedReservation.time))
+      );
+
+      if (!dbReservation) {
+        throw new Error('예약을 찾을 수 없습니다.');
+      }
+
+      await updateReservation(dbReservation.id, {
+        status: 'rejected',
+        rejection_reason: rejectionReason || null,
+      });
+      
+      alert('예약이 거절되었습니다.');
+      setShowRejectionModal(false);
+      setSelectedReservation(null);
+      
+      // 데이터 다시 로드
+      await loadReservations();
+      
+    } catch (error) {
+      console.error('예약 거절 오류:', error);
+      alert(error instanceof Error ? error.message : '예약 거절 중 오류가 발생했습니다.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <AdminHeader />
