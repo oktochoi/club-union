@@ -168,7 +168,13 @@ export default function AdminDashboard() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const inventoryData = {
+    const inventoryData: {
+      id: string;
+      item: string;
+      category: string;
+      current: number;
+      image: string | null;
+    } = {
       id: `inventory_${Date.now()}_${Math.random()}`,
       item: formData.get('item') as string,
       category: formData.get('category') as string,
@@ -186,7 +192,9 @@ export default function AdminDashboard() {
 
       const reader = new FileReader();
       reader.onload = (e) => {
-        inventoryData.image = e.target?.result as string;
+        if (e.target?.result && typeof e.target.result === 'string') {
+          inventoryData.image = e.target.result;
+        }
         
         try {
           const updatedInventory = [...inventoryItems, inventoryData];

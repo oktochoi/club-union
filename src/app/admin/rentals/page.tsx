@@ -180,7 +180,12 @@ export default function AdminRentalsPage() {
       // 파일을 base64로 변환하여 localStorage에 저장
       const reader = new FileReader();
       reader.onload = function(e) {
-        const base64String = e.target?.result as string;
+        if (!e.target?.result || typeof e.target.result !== 'string') {
+          alert('이미지 파일을 읽을 수 없습니다.');
+          return;
+        }
+        
+        const base64String = e.target.result;
         
         const itemData: RentalItem = {
           id: editingItem ? editingItem.id : Date.now().toString(),

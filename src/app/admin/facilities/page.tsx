@@ -185,7 +185,10 @@ export default function AdminFacilitiesPage() {
   };
 
   // 특정 시설, 날짜, 시간대의 예약 현황 확인
-  const getReservationStatus = (facilityName: string, date: string, timeSlot: string) => {
+  const getReservationStatus = (facilityName: string, date: string, timeSlot: string): {
+    status: 'approved' | 'pending' | 'available';
+    reservation: Reservation | null;
+  } => {
     // 승인된 예약 우선 확인 (예약 불가)
     const approvedReservation = reservations.find(r => 
       r.facility === facilityName && 
