@@ -37,7 +37,7 @@ export function onAuthStateChange(callback: (user: User | null) => void) {
             callback(userData || null);
           }
         })
-        .catch((error) => {
+        .then(undefined, (error) => {
           console.error('onAuthStateChange - 예외 발생:', error);
           callback(null);
         });
