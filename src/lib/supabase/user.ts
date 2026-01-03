@@ -69,8 +69,35 @@ export async function signUpUser(input: CreateUserInput) {
     }
 
     if (!userData) {
-      // 트리거가 실행되지 않은 경우
-      throw new Error('사용자 레코드가 생성되지 않았습니다. 트리거 함수를 확인하세요.');
+      // 트리거가 실행되지 않은 경우 수동으로 레코드 생성 시도
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('트리거가 실행되지 않아 수동으로 레코드를 생성합니다.');
+      }
+      
+      const { data: manualUserData, error: manualError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: input.email,
+          name: input.name,
+          club_name: input.club_name,
+          phone_number: input.phone_number,
+          role: input.role,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (manualError || !manualUserData) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('수동 레코드 생성 오류:', manualError);
+        }
+        throw new Error('사용자 레코드가 생성되지 않았습니다. 관리자에게 문의하세요.');
+      }
+      
+      userData = manualUserData;
     }
 
     // 회원가입 시 추가 정보 업데이트 (트리거가 기본값으로 생성한 레코드 업데이트)
