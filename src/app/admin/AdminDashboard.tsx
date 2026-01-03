@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { getUsers, updateUserStatus, getCurrentUser } from '@/lib/supabase/user';
 import { Button, Badge } from '@/components/ui';
 import type { User } from '@/types/user';
+import type { Facility } from '@/lib/supabase/facilities';
 
 export default function AdminDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState('today');
@@ -28,11 +29,11 @@ export default function AdminDashboard() {
   const [currentAdmin, setCurrentAdmin] = useState<User | null>(null);
   const [usersLoading, setUsersLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [recentReservations, setRecentReservations] = useState([]);
-  const [rentalRequests, setRentalRequests] = useState([]);
-  const [returnRequests, setReturnRequests] = useState([]);
-  const [inventoryItems, setInventoryItems] = useState([]);
-  const [facilities, setFacilities] = useState([]);
+  const [recentReservations, setRecentReservations] = useState<any[]>([]);
+  const [rentalRequests, setRentalRequests] = useState<any[]>([]);
+  const [returnRequests, setReturnRequests] = useState<any[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [facilities, setFacilities] = useState<any[]>([]);
   const router = useRouter();
 
   // Supabase에서 사용자 목록 로드
