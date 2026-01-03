@@ -129,7 +129,7 @@ export default function ReservationPage() {
         )}
 
         {activeTab === 'list' && (
-          <ReservationList reservations={reservations} />
+          <ReservationList />
         )}
       </main>
 
