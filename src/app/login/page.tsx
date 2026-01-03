@@ -73,8 +73,8 @@ export default function LoginPage() {
           console.log('관리자로 인식 - /admin으로 리다이렉트');
           window.location.href = '/admin';
         } else {
-          console.log('일반 사용자로 인식 - /로 리다이렉트');
-          window.location.href = '/';
+          console.log('일반 사용자로 인식 - /user로 리다이렉트');
+          window.location.href = '/user';
         }
       }
     } catch (err) {
