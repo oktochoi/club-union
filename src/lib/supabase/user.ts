@@ -69,35 +69,30 @@ export async function signUpUser(input: CreateUserInput) {
     }
 
     if (!userData) {
-      // 트리거가 실행되지 않은 경우 수동으로 레코드 생성 시도
+      // 트리거가 실행되지 않은 경우 RPC 함수를 사용하여 레코드 생성
       if (process.env.NODE_ENV === 'development') {
-        console.warn('트리거가 실행되지 않아 수동으로 레코드를 생성합니다.');
+        console.warn('트리거가 실행되지 않아 RPC 함수로 레코드를 생성합니다.');
       }
       
-      const { data: manualUserData, error: manualError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: input.email,
-          name: input.name,
-          club_name: input.club_name,
-          phone_number: input.phone_number,
-          role: input.role,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+      const { data: rpcUserData, error: rpcError } = await supabase
+        .rpc('create_user_record', {
+          p_user_id: authData.user.id,
+          p_email: input.email,
+          p_name: input.name,
+          p_club_name: input.club_name || null,
+          p_phone_number: input.phone_number || null,
+          p_role: input.role,
+        });
 
-      if (manualError || !manualUserData) {
+      if (rpcError || !rpcUserData) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('수동 레코드 생성 오류:', manualError);
+          console.error('RPC 함수 레코드 생성 오류:', rpcError);
         }
         throw new Error('사용자 레코드가 생성되지 않았습니다. 관리자에게 문의하세요.');
       }
       
-      userData = manualUserData;
+      // RPC 함수는 JSONB를 반환하므로 객체로 변환
+      userData = rpcUserData as any;
     }
 
     // 회원가입 시 추가 정보 업데이트 (트리거가 기본값으로 생성한 레코드 업데이트)
