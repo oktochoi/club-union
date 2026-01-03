@@ -279,7 +279,7 @@ export default function ReservationList() {
                     >
                       상세보기
                     </button>
-                    {(reservation.status === 'pending' || reservation.status === 'approved') && (
+                    {reservation.status === 'pending' && (
                       <Button
                         variant="danger"
                         size="sm"

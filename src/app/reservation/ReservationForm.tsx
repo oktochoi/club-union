@@ -366,7 +366,7 @@ export default function ReservationForm({ selectedDate, selectedFacility, select
               <li>• 예약 신청 후 관리자 승인이 필요합니다</li>
               <li>• 승인/거절 시 실시간 알림을 보내드립니다</li>
               <li>• 시설별로 운영시간이 다를 수 있습니다</li>
-              <li>• 취소는 이용 1일 전까지 가능합니다</li>
+              <li>• 승인 대기 중인 예약만 취소 가능합니다</li>
             </ul>
           </div>
         </div>
