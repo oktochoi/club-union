@@ -42,83 +42,9 @@ export default function AdminRentalsPage() {
   const [selectedRequest, setSelectedRequest] = useState<RentalRequest | null>(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
 
-  const [rentalItems, setRentalItems] = useState<RentalItem[]>([
-    {
-      id: '1',
-      name: '무선 마이크',
-      category: '음향장비',
-      price: 5000,
-      available: 8,
-      total: 10,
-      description: '고품질 무선 마이크로 공연 및 발표에 최적화되어 있습니다.',
-      deposit: 20000
-    },
-    {
-      id: '2',
-      name: '포터블 스피커',
-      category: '음향장비',
-      price: 8000,
-      available: 5,
-      total: 8,
-      description: '대용량 배터리와 강력한 출력을 자랑하는 포터블 스피커입니다.',
-      deposit: 50000
-    },
-    {
-      id: '3',
-      name: '프로젝터',
-      category: '영상장비',
-      price: 15000,
-      available: 3,
-      total: 5,
-      description: 'Full HD 해상도를 지원하는 고성능 프로젝터입니다.',
-      deposit: 100000
-    },
-    {
-      id: '4',
-      name: '노트북 (대여용)',
-      category: '컴퓨터',
-      price: 10000,
-      available: 7,
-      total: 10,
-      description: '업무 및 발표용으로 최적화된 대여용 노트북입니다.',
-      deposit: 200000
-    }
-  ]);
+  const [rentalItems, setRentalItems] = useState<RentalItem[]>([]);
 
-  const [rentalRequests, setRentalRequests] = useState<RentalRequest[]>([
-    {
-      id: '1',
-      itemId: '1',
-      itemName: '무선 마이크',
-      quantity: 2,
-      rentalDate: '2024-01-25',
-      returnDate: '2024-01-27',
-      totalPrice: 20000,
-      deposit: 40000,
-      status: 'pending',
-      applicant: '김동아리',
-      club: '음악동아리',
-      contact: '010-1234-5678',
-      purpose: '공연 준비',
-      createdAt: '2024-01-20T10:30:00Z'
-    },
-    {
-      id: '2',
-      itemId: '3',
-      itemName: '프로젝터',
-      quantity: 1,
-      rentalDate: '2024-01-26',
-      returnDate: '2024-01-28',
-      totalPrice: 45000,
-      deposit: 100000,
-      status: 'pending',
-      applicant: '박발표',
-      club: '창업동아리',
-      contact: '010-2345-6789',
-      purpose: '창업 발표회',
-      createdAt: '2024-01-20T14:15:00Z'
-    }
-  ]);
+  const [rentalRequests, setRentalRequests] = useState<RentalRequest[]>([]);
 
   const [accountInfo, setAccountInfo] = useState({
     bank: 'KB국민은행',
