@@ -19,6 +19,8 @@ export default function NotificationSystem() {
 
   // 실시간 알림 확인
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const interval = setInterval(() => {
       const userNotifications = JSON.parse(localStorage.getItem('userNotifications') || '[]');
       
@@ -90,12 +92,14 @@ export default function NotificationSystem() {
         });
         
         // 처리된 알림 제거
-        localStorage.removeItem('userNotifications');
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('userNotifications');
+        }
       }
     }, 2000);
 
     // 알림 권한 요청
-    if (Notification.permission === 'default') {
+    if (typeof window !== 'undefined' && typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission();
     }
 

@@ -42,6 +42,8 @@ export default function SuggestionPage() {
   });
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const loadSuggestions = () => {
       const savedSuggestions = localStorage.getItem('suggestions');
       if (savedSuggestions) {
@@ -83,7 +85,9 @@ export default function SuggestionPage() {
             views: 28
           }
         ];
-        localStorage.setItem('suggestions', JSON.stringify(defaultSuggestions));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('suggestions', JSON.stringify(defaultSuggestions));
+        }
         setSuggestions(defaultSuggestions);
       }
     };
@@ -109,7 +113,9 @@ export default function SuggestionPage() {
 
     const updatedSuggestions = [newSuggestion, ...suggestions];
     setSuggestions(updatedSuggestions);
-    localStorage.setItem('suggestions', JSON.stringify(updatedSuggestions));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('suggestions', JSON.stringify(updatedSuggestions));
+    }
 
     setFormData({ title: '', content: '', category: '시설' });
     setIsFormOpen(false);
@@ -120,7 +126,9 @@ export default function SuggestionPage() {
       s.id === suggestion.id ? { ...s, views: s.views + 1 } : s
     );
     setSuggestions(updatedSuggestions);
-    localStorage.setItem('suggestions', JSON.stringify(updatedSuggestions));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('suggestions', JSON.stringify(updatedSuggestions));
+    }
     setSelectedSuggestion(suggestion);
   };
 

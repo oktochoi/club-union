@@ -339,7 +339,7 @@ export default function AdminFacilitiesPage() {
       await deleteFacility(facilityId);
       
       // 관련 예약도 삭제 (localStorage)
-      if (facility) {
+      if (facility && typeof window !== 'undefined') {
         const updatedReservations = reservations.filter(r => r.facility !== facility.name);
         setReservations(updatedReservations);
         localStorage.setItem('adminReservations', JSON.stringify(updatedReservations));

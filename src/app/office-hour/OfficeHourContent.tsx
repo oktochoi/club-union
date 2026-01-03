@@ -138,6 +138,8 @@ export default function OfficeHourContent() {
 
   // 관리자가 수정한 물품 정보를 실시간으로 반영
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const interval = setInterval(() => {
       // 관리자 재고 정보 동기화
       const adminRentalItems = localStorage.getItem('adminRentalItems');
@@ -180,7 +182,7 @@ export default function OfficeHourContent() {
       }
 
       // 관리자의 계좌 정보 업데이트
-      const adminAccountInfo = localStorage.getItem('adminAccountInfo');
+      const adminAccountInfo = typeof window !== 'undefined' ? localStorage.getItem('adminAccountInfo') : null;
       if (adminAccountInfo) {
         try {
           const updatedAccount = JSON.parse(adminAccountInfo);
@@ -231,9 +233,11 @@ export default function OfficeHourContent() {
     setMyRentals(prev => [newRental, ...prev]);
     
     // 관리자에게 실시간으로 전송
-    const existingRequests = JSON.parse(localStorage.getItem('userRentalRequests') || '[]');
-    existingRequests.push(newRental);
-    localStorage.setItem('userRentalRequests', JSON.stringify(existingRequests));
+    if (typeof window !== 'undefined') {
+      const existingRequests = JSON.parse(localStorage.getItem('userRentalRequests') || '[]');
+      existingRequests.push(newRental);
+      localStorage.setItem('userRentalRequests', JSON.stringify(existingRequests));
+    }
     
     alert('대여 신청이 완료되었습니다. 관리자 승인 후 안내드리겠습니다.');
     

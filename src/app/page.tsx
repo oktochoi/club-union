@@ -77,13 +77,17 @@ export default function HomePage() {
         const facilitiesData = await getFacilities();
         
         // 공지사항 (localStorage에서)
-        const notices = JSON.parse(localStorage.getItem('adminNotices') || '[]');
+        const notices = typeof window !== 'undefined' 
+          ? JSON.parse(localStorage.getItem('adminNotices') || '[]')
+          : [];
         const recentNoticesData = notices
           .sort((a: Notice, b: Notice) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 3);
         
         // 건의사항 (localStorage에서)
-        const suggestions = JSON.parse(localStorage.getItem('adminSuggestions') || '[]');
+        const suggestions = typeof window !== 'undefined'
+          ? JSON.parse(localStorage.getItem('adminSuggestions') || '[]')
+          : [];
         
         setStats({
           totalReservations: reservations.length,

@@ -31,6 +31,7 @@ export default function AdminNoticesPage() {
   });
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     // 공지사항 데이터 초기화
     localStorage.removeItem('notices');
     localStorage.setItem('notices', JSON.stringify([]));
@@ -38,7 +39,9 @@ export default function AdminNoticesPage() {
   }, []);
 
   const saveNotices = (updatedNotices: Notice[]) => {
-    localStorage.setItem('notices', JSON.stringify(updatedNotices));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('notices', JSON.stringify(updatedNotices));
+    }
     setNotices(updatedNotices);
   };
 

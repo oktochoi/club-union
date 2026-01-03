@@ -128,11 +128,13 @@ export default function AdminRentalsPage() {
 
   // 로컬 스토리지와 실시간 동기화
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     // 관리자가 수정한 물품 정보를 로컬 스토리지에 저장
     localStorage.setItem('adminRentalItems', JSON.stringify(rentalItems));
   }, [rentalItems]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     // 사용자의 대여 신청을 실시간으로 확인
     const interval = setInterval(() => {
       const userRentalRequests = localStorage.getItem('userRentalRequests');
@@ -307,11 +309,13 @@ export default function AdminRentalsPage() {
       );
 
       // 사용자 대여 요청도 동기화
-      const userRentalRequests = JSON.parse(localStorage.getItem('userRentalRequests') || '[]');
-      const updatedUserRequests = userRentalRequests.map((r: any) => 
-        r.id === requestId ? { ...r, status: action === 'approve' ? 'approved' : 'rejected' } : r
-      );
-      localStorage.setItem('userRentalRequests', JSON.stringify(updatedUserRequests));
+      if (typeof window !== 'undefined') {
+        const userRentalRequests = JSON.parse(localStorage.getItem('userRentalRequests') || '[]');
+        const updatedUserRequests = userRentalRequests.map((r: any) => 
+          r.id === requestId ? { ...r, status: action === 'approve' ? 'approved' : 'rejected' } : r
+        );
+        localStorage.setItem('userRentalRequests', JSON.stringify(updatedUserRequests));
+      }
 
       alert(`대여 신청이 ${action === 'approve' ? '승인' : '거절'}되었습니다.`);
       setShowRequestModal(false);
@@ -333,7 +337,9 @@ export default function AdminRentalsPage() {
     };
 
     setAccountInfo(newAccountInfo);
-    localStorage.setItem('adminAccountInfo', JSON.stringify(newAccountInfo));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('adminAccountInfo', JSON.stringify(newAccountInfo));
+    }
     alert('계좌 정보가 저장되었습니다.');
     setShowAccountModal(false);
   };

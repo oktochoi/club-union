@@ -18,6 +18,7 @@ export default function LoginPage() {
 
   // URL 파라미터에서 상태 확인
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const status = params.get('status');
     if (status === 'pending') {
@@ -67,12 +68,14 @@ export default function LoginPage() {
       console.log('전체 사용자 정보:', result.user);
       
       // 전체 페이지 리로드를 통해 쿠키가 제대로 설정되도록 함
-      if (result.user.role === 'admin') {
-        console.log('관리자로 인식 - /admin으로 리다이렉트');
-        window.location.href = '/admin';
-      } else {
-        console.log('일반 사용자로 인식 - /로 리다이렉트');
-        window.location.href = '/';
+      if (typeof window !== 'undefined') {
+        if (result.user.role === 'admin') {
+          console.log('관리자로 인식 - /admin으로 리다이렉트');
+          window.location.href = '/admin';
+        } else {
+          console.log('일반 사용자로 인식 - /로 리다이렉트');
+          window.location.href = '/';
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');

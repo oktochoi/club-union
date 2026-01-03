@@ -24,6 +24,8 @@ export default function NoticePage() {
   const categories = ['전체', '일반', '시설', '동아리', '행사', '시스템'];
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const loadNotices = () => {
       const savedNotices = localStorage.getItem('notices');
       if (savedNotices) {

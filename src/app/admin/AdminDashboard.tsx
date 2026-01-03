@@ -147,12 +147,16 @@ export default function AdminDashboard() {
           facility.id === editingFacility.id ? {...facility, ...facilityData} : facility
         );
         setFacilities(updatedFacilities);
-        localStorage.setItem('adminFacilities', JSON.stringify(updatedFacilities));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('adminFacilities', JSON.stringify(updatedFacilities));
+        }
         alert('시설이 수정되었습니다.');
       } else {
         const updatedFacilities = [...facilities, facilityData];
         setFacilities(updatedFacilities);
-        localStorage.setItem('adminFacilities', JSON.stringify(updatedFacilities));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('adminFacilities', JSON.stringify(updatedFacilities));
+        }
         alert('새 시설이 추가되었습니다.');
       }
       
@@ -199,7 +203,9 @@ export default function AdminDashboard() {
         try {
           const updatedInventory = [...inventoryItems, inventoryData];
           setInventoryItems(updatedInventory);
-          localStorage.setItem('adminInventory', JSON.stringify(updatedInventory));
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('adminInventory', JSON.stringify(updatedInventory));
+          }
           alert('재고 아이템이 추가되었습니다.');
           setShowInventoryModal(false);
         } catch (error) {
@@ -211,7 +217,9 @@ export default function AdminDashboard() {
       try {
         const updatedInventory = [...inventoryItems, inventoryData];
         setInventoryItems(updatedInventory);
-        localStorage.setItem('adminInventory', JSON.stringify(updatedInventory));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('adminInventory', JSON.stringify(updatedInventory));
+        }
         alert('재고 아이템이 추가되었습니다.');
         setShowInventoryModal(false);
       } catch (error) {
@@ -303,7 +311,9 @@ export default function AdminDashboard() {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border p-6 cursor-pointer hover:bg-gray-50" onClick={() => {
-            document.getElementById('users-section')?.scrollIntoView({ behavior: 'smooth' });
+            if (typeof document !== 'undefined') {
+              document.getElementById('users-section')?.scrollIntoView({ behavior: 'smooth' });
+            }
           }}>
             <div className="flex items-center">
               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">

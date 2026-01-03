@@ -48,6 +48,8 @@ export default function ReservationCalendar({ selectedDate, onDateSelect, select
 
   // 관리자로부터 실시간으로 시설 정보 업데이트 받기
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const interval = setInterval(() => {
       const facilitiesFromAdmin = localStorage.getItem('adminFacilities');
       if (facilitiesFromAdmin) {
@@ -71,6 +73,8 @@ export default function ReservationCalendar({ selectedDate, onDateSelect, select
 
   // 실시간으로 관리자의 승인된 예약을 반영
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const interval = setInterval(() => {
       const adminReservations = JSON.parse(localStorage.getItem('adminReservations') || '[]');
       

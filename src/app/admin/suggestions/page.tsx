@@ -43,6 +43,7 @@ export default function AdminSuggestionsPage() {
   }, []);
 
   const loadSuggestions = () => {
+    if (typeof window === 'undefined') return;
     const savedSuggestions = localStorage.getItem('suggestions');
     if (savedSuggestions) {
       setSuggestions(JSON.parse(savedSuggestions));
@@ -83,13 +84,17 @@ export default function AdminSuggestionsPage() {
           views: 28
         }
       ];
-      localStorage.setItem('suggestions', JSON.stringify(defaultSuggestions));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('suggestions', JSON.stringify(defaultSuggestions));
+      }
       setSuggestions(defaultSuggestions);
     }
   };
 
   const saveSuggestions = (updatedSuggestions: Suggestion[]) => {
-    localStorage.setItem('suggestions', JSON.stringify(updatedSuggestions));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('suggestions', JSON.stringify(updatedSuggestions));
+    }
     setSuggestions(updatedSuggestions);
   };
 
