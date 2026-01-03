@@ -96,10 +96,6 @@ export async function signInUser(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: normalizedEmail,
       password,
-      options: {
-        // 비밀번호 유출 경고 무시
-        shouldCreateUser: false,
-      },
     });
 
     if (error) {
