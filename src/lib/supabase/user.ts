@@ -34,24 +34,42 @@ export async function signUpUser(input: CreateUserInput) {
 
     // 2. 트리거 함수가 자동으로 users 테이블에 레코드를 생성하므로
     //    잠시 대기 후 생성된 레코드를 조회
-    //    트리거가 실행될 시간을 주기 위해 약간의 지연
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // 트리거가 생성한 레코드 조회
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', authData.user.id)
-      .maybeSingle();
+    //    트리거가 실행될 시간을 주기 위해 약간의 지연 (최대 3초까지 재시도)
+    let userData = null;
+    let userError = null;
+    const maxRetries = 6;
+    let retryCount = 0;
 
-    if (userError) {
-      console.error('users 테이블 조회 오류:', userError);
-      throw new Error('사용자 정보를 가져올 수 없습니다.');
+    while (retryCount < maxRetries && !userData) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+
+      if (data) {
+        userData = data;
+        break;
+      }
+
+      if (error) {
+        userError = error;
+      }
+
+      retryCount++;
+    }
+
+    if (userError && !userData) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('users 테이블 조회 오류:', userError);
+      }
+      throw new Error('사용자 정보를 가져올 수 없습니다. 데이터베이스 설정을 확인하세요.');
     }
 
     if (!userData) {
-      // 트리거가 실행되지 않은 경우 (이미 생성된 사용자 등)
-      // 수동으로 레코드 생성 시도 (하지만 트리거가 있어야 하므로 이 경우는 드뭅니다)
+      // 트리거가 실행되지 않은 경우
       throw new Error('사용자 레코드가 생성되지 않았습니다. 트리거 함수를 확인하세요.');
     }
 
@@ -78,8 +96,28 @@ export async function signUpUser(input: CreateUserInput) {
 
     return { user: updatedUserData || userData, authUser: authData.user };
   } catch (error) {
-    console.error('회원가입 오류:', error);
-    throw error;
+    if (process.env.NODE_ENV === 'development') {
+      console.error('회원가입 오류:', error);
+    }
+    
+    // 더 명확한 오류 메시지 제공
+    if (error instanceof Error) {
+      if (error.message.includes('Database error')) {
+        throw new Error('데이터베이스 오류가 발생했습니다. 관리자에게 문의하세요.');
+      }
+      if (error.message.includes('already registered')) {
+        throw new Error('이미 등록된 이메일입니다.');
+      }
+      if (error.message.includes('Invalid email')) {
+        throw new Error('유효하지 않은 이메일 주소입니다.');
+      }
+      if (error.message.includes('Password')) {
+        throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
+      }
+      throw error;
+    }
+    
+    throw new Error('회원가입에 실패했습니다. 다시 시도해주세요.');
   }
 }
 

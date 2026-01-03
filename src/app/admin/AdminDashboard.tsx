@@ -271,26 +271,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 관리 버튼들 */}
-        <div className="mb-8 flex flex-wrap gap-3">
-          <button
-            onClick={() => {
-              setEditingFacility(null);
-              setShowFacilityModal(true);
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium whitespace-nowrap"
-          >
-            <i className="ri-add-line mr-2"></i>
-            시설 추가
-          </button>
-          <button
-            onClick={() => setShowInventoryModal(true)}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium whitespace-nowrap"
-          >
-            <i className="ri-box-3-line mr-2"></i>
-            재고 추가
-          </button>
-        </div>
 
         {/* 주요 통계 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
