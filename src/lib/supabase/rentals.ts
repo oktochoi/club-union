@@ -49,7 +49,7 @@ export interface RentalRequest {
   return_date: string;
   total_price: number;
   deposit: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'returned';
   applicant: string;
   club: string | null;
   contact: string;
@@ -75,7 +75,7 @@ export interface CreateRentalRequestInput {
 }
 
 export interface UpdateRentalRequestInput {
-  status?: 'pending' | 'approved' | 'rejected';
+  status?: 'pending' | 'approved' | 'rejected' | 'returned';
   admin_notes?: string | null;
   rejection_reason?: string | null;
 }
@@ -360,23 +360,39 @@ export async function updateRentalRequest(id: string, input: UpdateRentalRequest
     if (input.admin_notes !== undefined) updateData.admin_notes = input.admin_notes;
     if (input.rejection_reason !== undefined) updateData.rejection_reason = input.rejection_reason;
 
-    // 승인 시 재고 차감
-    if (input.status === 'approved') {
-      const { data: request } = await supabase
-        .from('rental_requests')
-        .select('item_id, quantity')
-        .eq('id', id)
-        .single();
+    // 현재 상태 확인 (재고 복구를 위해)
+    const { data: currentRequest } = await supabase
+      .from('rental_requests')
+      .select('item_id, quantity, status')
+      .eq('id', id)
+      .single();
 
-      if (request) {
+    // 승인 시 재고 차감
+    if (input.status === 'approved' && currentRequest?.status !== 'approved') {
+      if (currentRequest) {
         const { error: rpcError } = await supabase.rpc('decrement_rental_item_available', {
-          item_id: request.item_id,
-          quantity: request.quantity,
+          item_id: currentRequest.item_id,
+          quantity: currentRequest.quantity,
         });
 
         if (rpcError) {
           console.error('재고 차감 오류:', rpcError);
           // 재고 차감 실패해도 계속 진행 (이미 승인 상태로 변경됨)
+        }
+      }
+    }
+
+    // 반납 완료 시 재고 복구
+    if (input.status === 'returned' && currentRequest?.status === 'approved') {
+      if (currentRequest) {
+        const { error: rpcError } = await supabase.rpc('increment_rental_item_available', {
+          item_id: currentRequest.item_id,
+          quantity: currentRequest.quantity,
+        });
+
+        if (rpcError) {
+          console.error('재고 복구 오류:', rpcError);
+          // 재고 복구 실패해도 계속 진행
         }
       }
     }

@@ -37,7 +37,7 @@ interface RentalRequest {
   returnDate: string;
   totalPrice: number;
   deposit: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'returned';
   applicant: string;
   club: string;
   contact: string;
@@ -264,11 +264,22 @@ export default function AdminRentalsPage() {
     }
   };
 
-  const handleRequestAction = async (requestId: string, action: 'approve' | 'reject', reason?: string, adminNotes?: string) => {
-    // 이미 처리된 요청인지 확인
+  const handleRequestAction = async (requestId: string, action: 'approve' | 'reject' | 'return', reason?: string, adminNotes?: string) => {
     const currentRequest = rentalRequests.find(r => r.id === requestId);
-    if (!currentRequest || currentRequest.status !== 'pending') {
+    if (!currentRequest) {
+      alert('대여 신청을 찾을 수 없습니다.');
+      return;
+    }
+
+    // 승인/거절은 pending 상태에서만 가능
+    if ((action === 'approve' || action === 'reject') && currentRequest.status !== 'pending') {
       alert('이미 처리된 요청입니다.');
+      return;
+    }
+
+    // 반납 완료는 approved 상태에서만 가능
+    if (action === 'return' && currentRequest.status !== 'approved') {
+      alert('승인된 대여만 반납 완료 처리할 수 있습니다.');
       return;
     }
 
@@ -283,13 +294,19 @@ export default function AdminRentalsPage() {
       }
 
       // 대여 신청 상태 업데이트
+      let status: 'approved' | 'rejected' | 'returned';
+      if (action === 'approve') status = 'approved';
+      else if (action === 'reject') status = 'rejected';
+      else status = 'returned';
+
       await updateRentalRequest(requestId, {
-        status: action === 'approve' ? 'approved' : 'rejected',
+        status,
         rejection_reason: action === 'reject' ? reason || null : null,
         admin_notes: adminNotes || null,
       });
 
-      alert(`대여 신청이 ${action === 'approve' ? '승인' : '거절'}되었습니다.`);
+      const actionText = action === 'approve' ? '승인' : action === 'reject' ? '거절' : '반납 완료';
+      alert(`대여 신청이 ${actionText}되었습니다.`);
       setShowRequestModal(false);
       setShowApprovalModal(false);
       setSelectedRequest(null);
@@ -367,6 +384,8 @@ export default function AdminRentalsPage() {
         return 'bg-green-100 text-green-800';
       case 'rejected':
         return 'bg-red-100 text-red-800';
+      case 'returned':
+        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -380,6 +399,8 @@ export default function AdminRentalsPage() {
         return '승인 완료';
       case 'rejected':
         return '거절됨';
+      case 'returned':
+        return '반납 완료';
       default:
         return status;
     }
@@ -504,6 +525,21 @@ export default function AdminRentalsPage() {
                             className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 whitespace-nowrap"
                           >
                             거절
+                          </button>
+                        </div>
+                      )}
+                      {request.status === 'approved' && (
+                        <div className="flex space-x-2 pt-3 border-t">
+                          <button
+                            onClick={() => {
+                              if (confirm('반납 완료 처리하시겠습니까? 반납 후 재고가 복구됩니다.')) {
+                                handleRequestAction(request.id, 'return');
+                              }
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 whitespace-nowrap"
+                          >
+                            <i className="ri-check-line mr-2"></i>
+                            반납 완료
                           </button>
                         </div>
                       )}
