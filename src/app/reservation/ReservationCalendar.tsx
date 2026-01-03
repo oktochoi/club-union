@@ -76,12 +76,12 @@ export default function ReservationCalendar({ selectedDate, onDateSelect, select
     if (typeof window === 'undefined') return;
     
     const interval = setInterval(() => {
-      const adminReservations = JSON.parse(localStorage.getItem('adminReservations') || '[]');
+      const adminReservations: any[] = JSON.parse(localStorage.getItem('adminReservations') || '[]');
       
       // 승인된 예약들 업데이트
       const approved = adminReservations
-        .filter(r => r.status === 'approved')
-        .map(r => ({
+        .filter((r: any) => r.status === 'approved')
+        .map((r: any) => ({
           facility: getFacilityId(r.facility),
           date: r.date,
           time: r.time.split('-')[0],
@@ -91,8 +91,8 @@ export default function ReservationCalendar({ selectedDate, onDateSelect, select
       
       // 승인 대기 중인 예약들 업데이트
       const pending = adminReservations
-        .filter(r => r.status === 'pending')
-        .map(r => ({
+        .filter((r: any) => r.status === 'pending')
+        .map((r: any) => ({
           facility: getFacilityId(r.facility),
           date: r.date,
           time: r.time.split('-')[0],
