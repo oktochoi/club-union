@@ -100,7 +100,7 @@ export default function ReservationForm({ selectedDate, selectedFacility, select
         purpose: formData.purpose,
         participants: parseInt(formData.participants) || 1,
         contact: formData.contact,
-        notes: formData.notes || null,
+        notes: formData.notes || undefined,
       });
 
       onReservationAdd(newReservation);
