@@ -74,24 +74,27 @@ export async function signUpUser(input: CreateUserInput) {
       }
       
       // role 값 검증 및 정규화 (강화된 버전)
-      let validRole = input.role || '';
+      let validRoleStr: string = input.role || '';
       
       // 1. 문자열로 변환
-      validRole = String(validRole);
+      validRoleStr = String(validRoleStr);
       
       // 2. 공백 제거 및 소문자 변환
-      validRole = validRole.trim().toLowerCase();
+      validRoleStr = validRoleStr.trim().toLowerCase();
       
       // 3. 특수 문자 제거 (알파벳과 숫자만)
-      validRole = validRole.replace(/[^a-z0-9]/g, '');
+      validRoleStr = validRoleStr.replace(/[^a-z0-9]/g, '');
       
       // 4. 유효한 값인지 확인
-      if (!validRole || !['admin', 'president', 'member'].includes(validRole)) {
+      if (!validRoleStr || !['admin', 'president', 'member'].includes(validRoleStr)) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('Invalid role value:', input.role, '-> cleaned:', validRole, 'Using default: member');
+          console.warn('Invalid role value:', input.role, '-> cleaned:', validRoleStr, 'Using default: member');
         }
-        validRole = 'member';  // 기본값 'member'로 설정
+        validRoleStr = 'member';  // 기본값 'member'로 설정
       }
+      
+      // 5. UserRole 타입으로 변환
+      const validRole: UserRole = validRoleStr as UserRole;
       
       if (process.env.NODE_ENV === 'development') {
         console.log('원본 role:', input.role, '-> 검증된 role:', validRole);
