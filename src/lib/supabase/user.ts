@@ -36,6 +36,14 @@ export async function signUpUser(input: CreateUserInput) {
     //    트리거가 실행되지 않을 수 있으므로 즉시 RPC 함수 호출
     if (process.env.NODE_ENV === 'development') {
       console.log('RPC 함수로 사용자 레코드를 생성합니다.');
+      console.log('사용자 정보:', {
+        id: authData.user.id,
+        email: input.email,
+        name: input.name,
+        club_name: input.club_name,
+        phone_number: input.phone_number,
+        role: input.role,
+      });
     }
     
     const { data: rpcUserData, error: rpcError } = await supabase
@@ -51,8 +59,44 @@ export async function signUpUser(input: CreateUserInput) {
     if (rpcError) {
       if (process.env.NODE_ENV === 'development') {
         console.error('RPC 함수 레코드 생성 오류:', rpcError);
+        console.error('오류 코드:', rpcError.code);
+        console.error('오류 메시지:', rpcError.message);
+        console.error('오류 힌트:', rpcError.hint);
+        console.error('오류 세부사항:', rpcError.details);
       }
-      throw new Error('사용자 레코드가 생성되지 않았습니다. 관리자에게 문의하세요.');
+      
+      // RPC 함수가 존재하지 않는 경우를 위한 대체 방법
+      // 직접 INSERT 시도 (RLS 정책이 허용하는 경우)
+      if (rpcError.code === '42883' || rpcError.message?.includes('does not exist')) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('RPC 함수가 존재하지 않습니다. 직접 INSERT를 시도합니다.');
+        }
+        
+        const { data: directInsertData, error: directInsertError } = await supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            email: input.email,
+            name: input.name,
+            club_name: input.club_name || null,
+            phone_number: input.phone_number || null,
+            role: input.role,
+            status: 'pending',
+          })
+          .select()
+          .single();
+
+        if (directInsertError) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('직접 INSERT 오류:', directInsertError);
+          }
+          throw new Error(`사용자 레코드 생성 실패: ${directInsertError.message}. RPC 함수를 생성하거나 RLS 정책을 확인하세요.`);
+        }
+
+        return { user: directInsertData, authUser: authData.user };
+      }
+      
+      throw new Error(`사용자 레코드가 생성되지 않았습니다: ${rpcError.message}. 관리자에게 문의하세요.`);
     }
 
     if (!rpcUserData) {
@@ -61,6 +105,10 @@ export async function signUpUser(input: CreateUserInput) {
     
     // RPC 함수는 JSONB를 반환하므로 객체로 변환
     const userData = rpcUserData as any;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('사용자 레코드 생성 성공:', userData);
+    }
 
     return { user: userData, authUser: authData.user };
   } catch (error) {
