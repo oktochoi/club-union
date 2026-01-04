@@ -1,11 +1,10 @@
--- RPC 함수 재생성: 회원가입 후 users 테이블에 레코드를 생성
--- SECURITY DEFINER로 실행되어 RLS를 우회합니다.
--- 이전 버전과 호환성을 위해 기존 함수를 삭제하고 재생성
+-- RPC 함수 재생성: role 검증 강화 버전
+-- 이전 버전을 완전히 대체합니다.
 
--- 기존 함수 삭제
-DROP FUNCTION IF EXISTS public.create_user_record(UUID, TEXT, TEXT, TEXT, TEXT, TEXT);
+-- 기존 함수 삭제 (모든 오버로드)
+DROP FUNCTION IF EXISTS public.create_user_record CASCADE;
 
--- RPC 함수 생성
+-- RPC 함수 생성 (role 검증 강화)
 CREATE OR REPLACE FUNCTION public.create_user_record(
   p_user_id UUID,
   p_email TEXT,
@@ -23,25 +22,25 @@ DECLARE
   v_user_record JSONB;
   v_valid_role TEXT;
 BEGIN
-  -- role 값 검증 및 정규화
-  -- 허용된 값: 'admin', 'president', 'member'
-  -- 대소문자 구분 없이 처리
-  v_valid_role := LOWER(TRIM(COALESCE(p_role, '')));
-  
-  -- NULL이거나 빈 문자열인 경우 기본값 'member'로 설정
-  IF v_valid_role IS NULL OR v_valid_role = '' THEN
+  -- role 값 검증 및 정규화 (강화된 버전)
+  -- 1단계: NULL/빈 문자열 처리
+  IF p_role IS NULL OR TRIM(p_role) = '' THEN
     v_valid_role := 'member';
+  ELSE
+    -- 2단계: 대소문자 정규화 및 공백 제거
+    v_valid_role := LOWER(TRIM(p_role));
   END IF;
   
-  -- 유효하지 않은 role 값인 경우 기본값 'member'로 설정
+  -- 3단계: 유효한 값인지 확인
   IF v_valid_role NOT IN ('admin', 'president', 'member') THEN
+    -- 유효하지 않은 값이면 기본값 'member'로 설정
     RAISE WARNING 'Invalid role value: "%". Using default: member', p_role;
     v_valid_role := 'member';
   END IF;
   
-  -- 최종 검증: v_valid_role이 반드시 유효한 값이어야 함
-  IF v_valid_role NOT IN ('admin', 'president', 'member') THEN
-    RAISE EXCEPTION 'Role validation failed. Final role value: "%"', v_valid_role;
+  -- 4단계: 최종 검증 (이중 체크)
+  IF v_valid_role IS NULL OR v_valid_role NOT IN ('admin', 'president', 'member') THEN
+    RAISE EXCEPTION 'Role validation failed. Final role value: "%" (original: "%")', v_valid_role, p_role;
   END IF;
   
   -- RLS를 우회하여 직접 INSERT 수행
@@ -62,7 +61,7 @@ BEGIN
     p_name,
     p_club_name,
     p_phone_number,
-    v_valid_role,  -- 검증된 role 값 사용
+    v_valid_role,  -- 검증된 role 값만 사용
     'pending',
     NOW(),
     NOW()
@@ -72,7 +71,7 @@ BEGIN
     name = EXCLUDED.name,
     club_name = EXCLUDED.club_name,
     phone_number = EXCLUDED.phone_number,
-    role = v_valid_role,  -- 검증된 role 값 사용
+    role = v_valid_role,  -- 검증된 role 값만 사용
     updated_at = NOW();
   
   -- 생성된 레코드를 JSONB로 반환

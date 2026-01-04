@@ -32,82 +32,143 @@ export async function signUpUser(input: CreateUserInput) {
       throw new Error('사용자 생성에 실패했습니다.');
     }
 
-    // 2. RPC 함수를 사용하여 users 테이블에 레코드 생성
-    //    트리거가 실행되지 않을 수 있으므로 즉시 RPC 함수 호출
+    // 2. 트리거가 자동으로 users 테이블에 레코드를 생성할 때까지 대기
+    //    다른 기기에서는 네트워크 지연으로 트리거가 늦게 실행될 수 있음
     if (process.env.NODE_ENV === 'development') {
-      console.log('RPC 함수로 사용자 레코드를 생성합니다.');
-      console.log('사용자 정보:', {
-        id: authData.user.id,
-        email: input.email,
-        name: input.name,
-        club_name: input.club_name,
-        phone_number: input.phone_number,
-        role: input.role,
-      });
+      console.log('트리거 완료 대기 중...');
     }
     
-    const { data: rpcUserData, error: rpcError } = await supabase
-      .rpc('create_user_record', {
-        p_user_id: authData.user.id,
-        p_email: input.email,
-        p_name: input.name,
-        p_club_name: input.club_name || null,
-        p_phone_number: input.phone_number || null,
-        p_role: input.role,
-      });
-
-    if (rpcError) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('RPC 함수 레코드 생성 오류:', rpcError);
-        console.error('오류 코드:', rpcError.code);
-        console.error('오류 메시지:', rpcError.message);
-        console.error('오류 힌트:', rpcError.hint);
-        console.error('오류 세부사항:', rpcError.details);
+    let userData = null;
+    const maxRetries = 10; // 최대 5초 대기 (500ms * 10)
+    let retryCount = 0;
+    
+    // 트리거가 레코드를 생성할 때까지 폴링
+    while (retryCount < maxRetries && !userData) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authData.user.id)
+        .maybeSingle();
+      
+      if (data) {
+        userData = data;
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ 트리거가 레코드를 생성했습니다.');
+        }
+        break;
       }
       
-      // RPC 함수가 존재하지 않는 경우를 위한 대체 방법
-      // 직접 INSERT 시도 (RLS 정책이 허용하는 경우)
-      if (rpcError.code === '42883' || rpcError.message?.includes('does not exist')) {
+      if (error && process.env.NODE_ENV === 'development') {
+        console.warn(`트리거 대기 중... (${retryCount + 1}/${maxRetries})`);
+      }
+      
+      retryCount++;
+    }
+    
+    // 3. 트리거가 실패한 경우 RPC 함수로 수동 생성
+    if (!userData) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ 트리거가 레코드를 생성하지 않았습니다. RPC 함수로 생성합니다.');
+      }
+      
+      // role 값 검증 및 정규화 (강화된 버전)
+      let validRole = input.role || '';
+      
+      // 1. 문자열로 변환
+      validRole = String(validRole);
+      
+      // 2. 공백 제거 및 소문자 변환
+      validRole = validRole.trim().toLowerCase();
+      
+      // 3. 특수 문자 제거 (알파벳과 숫자만)
+      validRole = validRole.replace(/[^a-z0-9]/g, '');
+      
+      // 4. 유효한 값인지 확인
+      if (!validRole || !['admin', 'president', 'member'].includes(validRole)) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('RPC 함수가 존재하지 않습니다. 직접 INSERT를 시도합니다.');
+          console.warn('Invalid role value:', input.role, '-> cleaned:', validRole, 'Using default: member');
+        }
+        validRole = 'member';  // 기본값 'member'로 설정
+      }
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('원본 role:', input.role, '-> 검증된 role:', validRole);
+      }
+      
+      const { data: rpcUserData, error: rpcError } = await supabase
+        .rpc('create_user_record', {
+          p_user_id: authData.user.id,
+          p_email: input.email,
+          p_name: input.name,
+          p_club_name: input.club_name || null,
+          p_phone_number: input.phone_number || null,
+          p_role: validRole,  // 검증된 role 값만 전달
+        });
+
+      if (rpcError) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('RPC 함수 레코드 생성 오류:', rpcError);
+          console.error('오류 코드:', rpcError.code);
+          console.error('오류 메시지:', rpcError.message);
+          console.error('오류 힌트:', rpcError.hint);
+          console.error('오류 세부사항:', rpcError.details);
         }
         
-        const { data: directInsertData, error: directInsertError } = await supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email: input.email,
-            name: input.name,
-            club_name: input.club_name || null,
-            phone_number: input.phone_number || null,
-            role: input.role,
-            status: 'pending',
-          })
-          .select()
-          .single();
-
-        if (directInsertError) {
+        // RPC 함수가 존재하지 않는 경우를 위한 대체 방법
+        // 직접 INSERT 시도 (RLS 정책이 허용하는 경우)
+        if (rpcError.code === '42883' || rpcError.message?.includes('does not exist')) {
           if (process.env.NODE_ENV === 'development') {
-            console.error('직접 INSERT 오류:', directInsertError);
+            console.warn('RPC 함수가 존재하지 않습니다. 직접 INSERT를 시도합니다.');
           }
-          throw new Error(`사용자 레코드 생성 실패: ${directInsertError.message}. RPC 함수를 생성하거나 RLS 정책을 확인하세요.`);
-        }
+          
+          const { data: directInsertData, error: directInsertError } = await supabase
+            .from('users')
+            .insert({
+              id: authData.user.id,
+              email: input.email,
+              name: input.name,
+              club_name: input.club_name || null,
+              phone_number: input.phone_number || null,
+              role: validRole,
+              status: 'pending',
+            })
+            .select()
+            .single();
 
-        return { user: directInsertData, authUser: authData.user };
+          if (directInsertError) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error('직접 INSERT 오류:', directInsertError);
+            }
+            throw new Error(`사용자 레코드 생성 실패: ${directInsertError.message}. RPC 함수를 생성하거나 RLS 정책을 확인하세요.`);
+          }
+
+          return { user: directInsertData, authUser: authData.user };
+        }
+        
+        throw new Error(`사용자 레코드가 생성되지 않았습니다: ${rpcError.message}. 관리자에게 문의하세요.`);
+      }
+
+      if (!rpcUserData) {
+        throw new Error('사용자 레코드가 생성되지 않았습니다. 관리자에게 문의하세요.');
       }
       
-      throw new Error(`사용자 레코드가 생성되지 않았습니다: ${rpcError.message}. 관리자에게 문의하세요.`);
-    }
+      // RPC 함수는 JSONB를 반환하므로 객체로 변환
+      userData = rpcUserData as any;
 
-    if (!rpcUserData) {
-      throw new Error('사용자 레코드가 생성되지 않았습니다. 관리자에게 문의하세요.');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ RPC 함수로 사용자 레코드 생성 성공:', userData);
+      }
     }
     
-    // RPC 함수는 JSONB를 반환하므로 객체로 변환
-    const userData = rpcUserData as any;
+    // 4. 최종 확인: userData가 없으면 에러
+    if (!userData) {
+      throw new Error('사용자 레코드가 생성되지 않았습니다. 트리거와 RPC 함수 모두 실패했습니다. 관리자에게 문의하세요.');
+    }
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('사용자 레코드 생성 성공:', userData);
+      console.log('✅ 사용자 레코드 생성 완료:', userData);
     }
 
     return { user: userData, authUser: authData.user };
