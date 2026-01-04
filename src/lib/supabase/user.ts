@@ -32,91 +32,37 @@ export async function signUpUser(input: CreateUserInput) {
       throw new Error('사용자 생성에 실패했습니다.');
     }
 
-    // 2. 트리거 함수가 자동으로 users 테이블에 레코드를 생성하므로
-    //    잠시 대기 후 생성된 레코드를 조회
-    //    트리거가 실행될 시간을 주기 위해 약간의 지연 (최대 3초까지 재시도)
-    let userData = null;
-    let userError = null;
-    const maxRetries = 6;
-    let retryCount = 0;
-
-    while (retryCount < maxRetries && !userData) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authData.user.id)
-        .maybeSingle();
-
-      if (data) {
-        userData = data;
-        break;
-      }
-
-      if (error) {
-        userError = error;
-      }
-
-      retryCount++;
+    // 2. RPC 함수를 사용하여 users 테이블에 레코드 생성
+    //    트리거가 실행되지 않을 수 있으므로 즉시 RPC 함수 호출
+    if (process.env.NODE_ENV === 'development') {
+      console.log('RPC 함수로 사용자 레코드를 생성합니다.');
     }
+    
+    const { data: rpcUserData, error: rpcError } = await supabase
+      .rpc('create_user_record', {
+        p_user_id: authData.user.id,
+        p_email: input.email,
+        p_name: input.name,
+        p_club_name: input.club_name || null,
+        p_phone_number: input.phone_number || null,
+        p_role: input.role,
+      });
 
-    if (userError && !userData) {
+    if (rpcError) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('users 테이블 조회 오류:', userError);
+        console.error('RPC 함수 레코드 생성 오류:', rpcError);
       }
-      throw new Error('사용자 정보를 가져올 수 없습니다. 데이터베이스 설정을 확인하세요.');
+      throw new Error('사용자 레코드가 생성되지 않았습니다. 관리자에게 문의하세요.');
     }
 
-    if (!userData) {
-      // 트리거가 실행되지 않은 경우 RPC 함수를 사용하여 레코드 생성
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('트리거가 실행되지 않아 RPC 함수로 레코드를 생성합니다.');
-      }
-      
-      const { data: rpcUserData, error: rpcError } = await supabase
-        .rpc('create_user_record', {
-          p_user_id: authData.user.id,
-          p_email: input.email,
-          p_name: input.name,
-          p_club_name: input.club_name || null,
-          p_phone_number: input.phone_number || null,
-          p_role: input.role,
-        });
-
-      if (rpcError || !rpcUserData) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('RPC 함수 레코드 생성 오류:', rpcError);
-        }
-        throw new Error('사용자 레코드가 생성되지 않았습니다. 관리자에게 문의하세요.');
-      }
-      
-      // RPC 함수는 JSONB를 반환하므로 객체로 변환
-      userData = rpcUserData as any;
+    if (!rpcUserData) {
+      throw new Error('사용자 레코드가 생성되지 않았습니다. 관리자에게 문의하세요.');
     }
+    
+    // RPC 함수는 JSONB를 반환하므로 객체로 변환
+    const userData = rpcUserData as any;
 
-    // 회원가입 시 추가 정보 업데이트 (트리거가 기본값으로 생성한 레코드 업데이트)
-    const { data: updatedUserData, error: updateError } = await supabase
-      .from('users')
-      .update({
-        name: input.name,
-        club_name: input.club_name,
-        phone_number: input.phone_number,
-        role: input.role, // metadata에서 가져온 role로 업데이트
-        status: 'pending', // 회원가입 시 기본값: 승인 대기
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', authData.user.id)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('사용자 정보 업데이트 오류:', updateError);
-      // 업데이트 실패해도 기본 레코드는 있으므로 계속 진행
-      return { user: userData, authUser: authData.user };
-    }
-
-    return { user: updatedUserData || userData, authUser: authData.user };
+    return { user: userData, authUser: authData.user };
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.error('회원가입 오류:', error);

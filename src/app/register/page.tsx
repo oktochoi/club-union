@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Input, Button, ErrorMessage } from '@/components/ui';
+import { formatPhoneNumber, extractNumbers, isValidPhoneNumber } from '@/utils/phone';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -34,6 +35,17 @@ export default function RegisterPage() {
         setFormData(prev => ({
           ...prev,
           [name]: value
+        }));
+      }
+    } else if (name === 'phoneNumber') {
+      // 전화번호 자동 포맷팅
+      const numbers = extractNumbers(value);
+      // 최대 11자리까지만 입력 가능
+      if (numbers.length <= 11) {
+        const formatted = formatPhoneNumber(numbers);
+        setFormData(prev => ({
+          ...prev,
+          [name]: formatted
         }));
       }
     } else {
@@ -75,8 +87,7 @@ export default function RegisterPage() {
       return false;
     }
     
-    const phoneRegex = /^010-?\d{4}-?\d{4}$/;
-    if (!phoneRegex.test(formData.phoneNumber.replace(/-/g, ''))) {
+    if (!isValidPhoneNumber(formData.phoneNumber)) {
       setError('올바른 연락처 형식을 입력해주세요. (010-0000-0000)');
       return false;
     }
@@ -103,12 +114,15 @@ export default function RegisterPage() {
     try {
       const { signUpUser } = await import('@/lib/supabase/user');
       
+      // 전화번호를 포맷팅하여 저장
+      const formattedPhone = formatPhoneNumber(formData.phoneNumber);
+      
       await signUpUser({
         email: formData.email,
         password: formData.password,
         name: formData.name,
         club_name: formData.clubName,
-        phone_number: formData.phoneNumber,
+        phone_number: formattedPhone,
         role: formData.role as 'president' | 'member',
       });
       
