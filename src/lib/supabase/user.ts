@@ -311,7 +311,7 @@ export async function signInUser(email: string, password: string) {
       console.log('users 테이블에서 사용자 정보 조회 시도 - ID:', authUser.id);
     }
     
-    const { data: userData, error: userError } = await supabase
+    let { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
       .eq('id', authUser.id)
