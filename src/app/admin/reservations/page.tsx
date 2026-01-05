@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminHeader from '../AdminHeader';
+import AuthCheck from '@/components/AuthCheck';
 import { getReservations, updateReservation } from '@/lib/supabase/reservations';
 import { getUsers } from '@/lib/supabase/user';
 

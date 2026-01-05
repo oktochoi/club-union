@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminHeader from '../AdminHeader';
+import AuthCheck from '@/components/AuthCheck';
 
 interface Notice {
   id: number;
