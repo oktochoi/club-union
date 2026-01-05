@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,7 +10,7 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -35,7 +34,7 @@ export default function Header() {
             >
               <i className="ri-menu-line text-xl"></i>
             </button>
-            <Link href="/" className="flex items-center ml-2 lg:ml-0">
+            <Link href="/user" className="flex items-center ml-2 lg:ml-0">
               <div className="font-['Pacifico'] text-2xl text-blue-600">총동연</div>
             </Link>
           </div>
@@ -61,20 +60,32 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             <NotificationSystem />
 
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">
-                  {user?.name ? user.name.charAt(0) : 'U'}
-                </span>
-              </div>
-              <div className="hidden sm:block">
-                <div className="text-sm font-medium text-gray-900">
-                  {user?.name || '사용자'}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {user?.club_name || '동아리'}
+            {loading ? (
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gray-300 rounded-full animate-pulse"></div>
+                <div className="hidden sm:block">
+                  <div className="h-4 w-16 bg-gray-200 rounded animate-pulse mb-1"></div>
+                  <div className="h-3 w-12 bg-gray-200 rounded animate-pulse"></div>
                 </div>
               </div>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">
+                    {user?.name ? user.name.charAt(0) : 'U'}
+                  </span>
+                </div>
+                <div className="hidden sm:block">
+                  <div className="text-sm font-medium text-gray-900">
+                    {user?.name || '사용자'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {user?.club_name || '동아리'}
+                  </div>
+                </div>
+              </div>
+            )}
+            {!loading && (
               <div className="relative">
                 <button 
                   className="p-1 text-gray-400 hover:text-gray-500"
@@ -114,7 +125,7 @@ export default function Header() {
                   </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

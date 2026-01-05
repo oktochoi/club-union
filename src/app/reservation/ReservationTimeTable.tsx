@@ -21,22 +21,36 @@ export default function ReservationTimeTable({
   const [loading, setLoading] = useState(true);
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
   const [reservations, setReservations] = useState<any[]>([]);
+  const [viewStartDate, setViewStartDate] = useState(new Date()); // 표시할 날짜 범위의 시작일
 
-  // 7일간의 날짜 배열 생성 (오늘부터)
-  const getNext7Days = () => {
+  // 7일간의 날짜 배열 생성 (viewStartDate 기준)
+  const getDaysForView = () => {
     const days = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(viewStartDate);
+    startDate.setHours(0, 0, 0, 0);
     
     for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
       days.push(date);
     }
     return days;
   };
 
-  const days = getNext7Days();
+  const days = getDaysForView();
+
+  // 날짜 범위 이동 함수
+  const moveDateRange = (direction: 'prev' | 'next' | 'today') => {
+    const newDate = new Date(viewStartDate);
+    if (direction === 'prev') {
+      newDate.setDate(newDate.getDate() - 7);
+    } else if (direction === 'next') {
+      newDate.setDate(newDate.getDate() + 7);
+    } else {
+      newDate.setTime(new Date().getTime());
+    }
+    setViewStartDate(newDate);
+  };
 
   // 시설 데이터 로드
   useEffect(() => {
@@ -58,14 +72,16 @@ export default function ReservationTimeTable({
     };
 
     loadFacilities();
-    const interval = setInterval(loadFacilities, 10000); // 10초마다 업데이트
-
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (수동 새로고침만 사용)
   }, []);
 
   // 날짜 포맷팅
   const formatDate = (date: Date) => {
-    return date.toISOString().split('T')[0];
+    // 로컬 시간을 사용하여 날짜 포맷팅 (YYYY-MM-DD)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   // 예약 데이터 로드
@@ -74,8 +90,9 @@ export default function ReservationTimeTable({
       if (!selectedFacility) return;
       
       try {
+        const currentDays = getDaysForView();
         const allReservations: any[] = [];
-        for (const date of days) {
+        for (const date of currentDays) {
           const dateStr = formatDate(date);
           const dayReservations = await getReservationsByFacilityAndDate(selectedFacility, dateStr);
           allReservations.push(...dayReservations);
@@ -88,10 +105,9 @@ export default function ReservationTimeTable({
 
     if (selectedFacility) {
       loadReservations();
-      const interval = setInterval(loadReservations, 5000); // 5초마다 업데이트
-      return () => clearInterval(interval);
+      // 자동 새로고침 제거 (수동 새로고침만 사용)
     }
-  }, [selectedFacility, days]);
+  }, [selectedFacility, viewStartDate]);
 
   // 모든 시간대 수집 (모든 시설의 시간대를 합침)
   const getAllTimeSlots = () => {
@@ -235,7 +251,52 @@ export default function ReservationTimeTable({
           </div>
         )}
 
-        {/* 7일 타임테이블 */}
+        {/* 타임테이블 */}
+        <div className="mb-4">
+          {/* 날짜 네비게이션 */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => moveDateRange('prev')}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                title="이전 7일"
+              >
+                <i className="ri-arrow-left-line mr-1"></i>
+                이전
+              </button>
+              <button
+                onClick={() => moveDateRange('today')}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                title="오늘로 이동"
+              >
+                오늘
+              </button>
+              <button
+                onClick={() => moveDateRange('next')}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                title="다음 7일"
+              >
+                다음
+                <i className="ri-arrow-right-line ml-1"></i>
+              </button>
+              <input
+                type="date"
+                value={viewStartDate.toISOString().split('T')[0]}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setViewStartDate(new Date(e.target.value));
+                  }
+                }}
+                className="ml-2 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                title="날짜 선택"
+              />
+            </div>
+            <div className="text-sm text-gray-600">
+              {formatDateDisplay(days[0])} ~ {formatDateDisplay(days[6])}
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <div className="min-w-full">
             {/* 헤더: 날짜 */}

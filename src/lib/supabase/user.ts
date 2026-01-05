@@ -342,18 +342,47 @@ export async function signInUser(email: string, password: string) {
 
     if (!userData) {
       // users 테이블에 레코드가 없는 경우
-      // 트리거 함수가 실행되지 않았거나 백필이 필요함
+      // RPC 함수로 레코드 생성 시도
       if (process.env.NODE_ENV === 'development') {
-        console.error('❌ users 테이블에 사용자 레코드가 없습니다. User ID:', authUser.id);
-        console.error('⚠️ 트리거 함수가 실행되지 않았거나 백필이 필요합니다.');
-        console.error('📝 해결 방법: Supabase Dashboard > SQL Editor에서 다음 파일을 실행하세요:');
-        console.error('   - supabase/migrations/009_create_user_trigger.sql (트리거 함수 생성)');
-        console.error('   - supabase/migrations/010_create_admin_user_now.sql (admin 사용자 생성)');
+        console.warn('⚠️ users 테이블에 사용자 레코드가 없습니다. RPC 함수로 생성 시도 - User ID:', authUser.id);
       }
       
-      // users 테이블에 레코드가 없으면 에러 발생
-      // 임시 사용자 객체로 진행하지 않음 (보안상 위험)
-      throw new Error('사용자 정보를 찾을 수 없습니다. 트리거 함수가 실행되지 않았거나 백필이 필요합니다. 관리자에게 문의하세요.');
+      try {
+        // create_user_record RPC 함수로 레코드 생성 시도
+        const { data: rpcUserData, error: rpcError } = await supabase.rpc('create_user_record', {
+          p_user_id: authUser.id,
+          p_email: authUser.email || '',
+          p_name: authUser.user_metadata?.name || authUser.email || 'User',
+          p_club_name: authUser.user_metadata?.club_name || null,
+          p_phone_number: authUser.user_metadata?.phone_number || null,
+          p_role: authUser.user_metadata?.role || 'member'
+        });
+        
+        if (rpcError) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error('RPC 함수 실행 오류:', rpcError);
+          }
+          // RPC 함수가 실패하면 에러 발생
+          throw new Error('사용자 정보를 찾을 수 없습니다. 트리거 함수가 실행되지 않았거나 백필이 필요합니다. 관리자에게 문의하세요.');
+        }
+        
+        if (rpcUserData) {
+          // RPC 함수로 생성된 레코드 사용
+          userData = rpcUserData as any;
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ RPC 함수로 사용자 레코드 생성 완료');
+          }
+        } else {
+          throw new Error('사용자 정보를 찾을 수 없습니다. 트리거 함수가 실행되지 않았거나 백필이 필요합니다. 관리자에게 문의하세요.');
+        }
+      } catch (rpcErr) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('사용자 레코드 생성 실패:', rpcErr);
+          console.error('📝 해결 방법: Supabase Dashboard > SQL Editor에서 다음 파일을 실행하세요:');
+          console.error('   - supabase/migrations/031_emergency_fix_user_access.sql (긴급 복구)');
+        }
+        throw new Error('사용자 정보를 찾을 수 없습니다. 트리거 함수가 실행되지 않았거나 백필이 필요합니다. 관리자에게 문의하세요.');
+      }
     }
 
     // 마지막 로그인 시간 업데이트
@@ -390,42 +419,100 @@ export async function signOutUser() {
 
 /**
  * 현재 로그인한 사용자 정보 가져오기
+ * 재시도 로직 포함하여 안정성 향상
  */
 export async function getCurrentUser(): Promise<User | null> {
-  try {
-    const supabase = createClient();
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+  const supabase = createClient();
+  const maxRetries = 5;
+  let retryCount = 0;
 
-    if (authError) {
-      console.error('인증 사용자 조회 오류:', authError);
-      return null;
-    }
+  while (retryCount < maxRetries) {
+    try {
+      // 세션이 복원될 때까지 대기 (첫 시도가 아닐 때만)
+      if (retryCount > 0) {
+        await new Promise(resolve => setTimeout(resolve, 300 * retryCount));
+      }
 
-    if (!authUser) {
-      return null;
-    }
-
-    const { data: userData, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', authUser.id)
-      .maybeSingle(); // .single() 대신 .maybeSingle() 사용 (행이 없어도 에러 발생 안 함)
-
-    if (error) {
-      console.error('사용자 정보 조회 오류:', error);
-      console.error('에러 코드:', error.code);
-      console.error('에러 메시지:', error.message);
-      console.error('에러 힌트:', error.hint);
+      // 먼저 세션 확인 (getSession이 getUser보다 빠름)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      // RLS 정책 문제일 수 있으므로 null 반환
-      return null;
-    }
+      if (sessionError) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`세션 조회 오류 (시도 ${retryCount + 1}/${maxRetries}):`, sessionError);
+        }
+        retryCount++;
+        continue;
+      }
 
-    return userData;
-  } catch (error) {
-    console.error('현재 사용자 조회 오류:', error);
-    return null;
+      if (!session?.user) {
+        // 세션이 없으면 재시도 (세션이 아직 복원 중일 수 있음)
+        if (retryCount < maxRetries - 1) {
+          retryCount++;
+          continue;
+        }
+        return null;
+      }
+
+      // users 테이블에서 사용자 정보 조회
+      const { data: userData, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (error) {
+        // RLS 정책 오류나 일시적 오류인 경우 재시도
+        if (error.code === 'PGRST116' || error.message.includes('permission denied') || error.message.includes('406')) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn(`사용자 정보 조회 오류 (시도 ${retryCount + 1}/${maxRetries}):`, error.message);
+          }
+          retryCount++;
+          continue;
+        }
+        
+        // 치명적 오류인 경우 즉시 반환
+        if (process.env.NODE_ENV === 'development') {
+          console.error('사용자 정보 조회 오류:', error);
+          console.error('에러 코드:', error.code);
+          console.error('에러 메시지:', error.message);
+        }
+        return null;
+      }
+
+      // 사용자 데이터가 있으면 반환
+      if (userData) {
+        return userData;
+      }
+
+      // 사용자 데이터가 없으면 재시도 (트리거가 아직 실행되지 않았을 수 있음)
+      if (retryCount < maxRetries - 1) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`사용자 레코드 없음 (시도 ${retryCount + 1}/${maxRetries}), 재시도 중...`);
+        }
+        retryCount++;
+        continue;
+      }
+
+      // 최대 재시도 후에도 없으면 null 반환
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('사용자 레코드를 찾을 수 없습니다. 트리거 함수가 실행되지 않았을 수 있습니다.');
+      }
+      return null;
+
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`현재 사용자 조회 오류 (시도 ${retryCount + 1}/${maxRetries}):`, error);
+      }
+      retryCount++;
+      
+      // 최대 재시도 횟수에 도달하면 null 반환
+      if (retryCount >= maxRetries) {
+        return null;
+      }
+    }
   }
+
+  return null;
 }
 
 /**

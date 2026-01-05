@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminHeader from '../AdminHeader';
+import AuthCheck from '@/components/AuthCheck';
 import Loading from '@/components/ui/Loading';
 import { Button, Card, Badge, Input, ErrorMessage } from '@/components/ui';
 import { getCurrentUser, getUsers, updateUserStatus } from '@/lib/supabase/user';
@@ -134,8 +135,9 @@ export default function AdminUsersPage() {
   const activeUsers = users.filter((u) => u.status === 'active');
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminHeader />
+    <AuthCheck requireAuth={true} requireAdmin={true}>
+      <div className="min-h-screen bg-gray-50">
+        <AdminHeader />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">사용자 관리</h1>
@@ -413,7 +415,8 @@ export default function AdminUsersPage() {
           </div>
         </Card>
       </main>
-    </div>
+      </div>
+    </AuthCheck>
   );
 }
 

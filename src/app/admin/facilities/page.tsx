@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminHeader from '../AdminHeader';
+import AuthCheck from '@/components/AuthCheck';
 import { Button, Card, Input } from '@/components/ui';
 import { 
   getFacilities, 
@@ -40,6 +41,7 @@ export default function AdminFacilitiesPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [viewStartDate, setViewStartDate] = useState(new Date()); // 표시할 날짜 범위의 시작일
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -99,9 +101,10 @@ export default function AdminFacilitiesPage() {
       const users = await getUsers();
       const userMap = new Map(users.map(u => [u.id, u]));
       
-      // 7일간의 예약 데이터 로드
+      // 현재 표시 중인 날짜 범위의 예약 데이터 로드
+      const currentDays = getDaysForView();
       const allReservations: any[] = [];
-      for (const date of days) {
+      for (const date of currentDays) {
         const dateStr = formatDate(date);
         const dayReservations = await getReservationsByFacilityAndDate(selectedFacility.id, dateStr);
         allReservations.push(...dayReservations.map(r => ({
@@ -146,23 +149,36 @@ export default function AdminFacilitiesPage() {
 
       return () => clearInterval(interval);
     }
-  }, [selectedFacility]);
+  }, [selectedFacility, viewStartDate]);
 
-  // 7일간의 날짜 배열 생성 (오늘부터)
-  const getNext7Days = () => {
+  // 7일간의 날짜 배열 생성 (viewStartDate 기준)
+  const getDaysForView = () => {
     const days = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(viewStartDate);
+    startDate.setHours(0, 0, 0, 0);
     
     for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
       days.push(date);
     }
     return days;
   };
 
-  const days = getNext7Days();
+  const days = getDaysForView();
+
+  // 날짜 범위 이동 함수
+  const moveDateRange = (direction: 'prev' | 'next' | 'today') => {
+    const newDate = new Date(viewStartDate);
+    if (direction === 'prev') {
+      newDate.setDate(newDate.getDate() - 7);
+    } else if (direction === 'next') {
+      newDate.setDate(newDate.getDate() + 7);
+    } else {
+      newDate.setTime(new Date().getTime());
+    }
+    setViewStartDate(newDate);
+  };
 
   // 날짜 포맷팅
   const formatDate = (date: Date) => {
@@ -521,8 +537,9 @@ export default function AdminFacilitiesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminHeader />
+    <AuthCheck requireAuth={true} requireAdmin={true}>
+      <div className="min-h-screen bg-gray-50">
+        <AdminHeader />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8 flex items-center justify-between">
@@ -654,9 +671,9 @@ export default function AdminFacilitiesPage() {
             {/* 7일 타임테이블 */}
             <div className="bg-white rounded-lg shadow-sm border">
               <div className="p-6 border-b">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">
-                    7일간 시간대별 예약 현황
+                    시간대별 예약 현황
                   </h3>
                   <div className="flex items-center space-x-4 text-sm">
                     <div className="flex items-center">
@@ -671,6 +688,48 @@ export default function AdminFacilitiesPage() {
                       <div className="w-4 h-4 bg-red-100 border-2 border-red-300 rounded mr-2"></div>
                       <span className="text-gray-600">예약됨</span>
                     </div>
+                  </div>
+                </div>
+                {/* 날짜 네비게이션 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => moveDateRange('prev')}
+                      className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                      title="이전 7일"
+                    >
+                      <i className="ri-arrow-left-line mr-1"></i>
+                      이전
+                    </button>
+                    <button
+                      onClick={() => moveDateRange('today')}
+                      className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                      title="오늘로 이동"
+                    >
+                      오늘
+                    </button>
+                    <button
+                      onClick={() => moveDateRange('next')}
+                      className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                      title="다음 7일"
+                    >
+                      다음
+                      <i className="ri-arrow-right-line ml-1"></i>
+                    </button>
+                    <input
+                      type="date"
+                      value={viewStartDate.toISOString().split('T')[0]}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setViewStartDate(new Date(e.target.value));
+                        }
+                      }}
+                      className="ml-2 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      title="날짜 선택"
+                    />
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {formatDateDisplay(days[0])} ~ {formatDateDisplay(days[6])}
                   </div>
                 </div>
               </div>
@@ -708,10 +767,7 @@ export default function AdminFacilitiesPage() {
                           let cellContent = '';
                           let onClickHandler: (() => void) | undefined = undefined;
 
-                          if (isPast) {
-                            cellClass = 'bg-gray-100 text-gray-400 cursor-not-allowed';
-                            cellContent = '-';
-                          } else if (status === 'approved') {
+                          if (status === 'approved') {
                             cellClass = 'bg-red-100 text-red-700 border-2 border-red-300 cursor-pointer hover:bg-red-200';
                             cellContent = reservation ? reservation.club : '예약불가';
                             onClickHandler = () => {
@@ -738,8 +794,8 @@ export default function AdminFacilitiesPage() {
                             <div
                               key={dateIndex}
                               onClick={onClickHandler}
-                              className={`p-3 text-center text-xs font-medium rounded transition-all ${cellClass}`}
-                              title={isPast ? '과거 날짜' : status === 'approved' ? '예약됨 - 클릭하여 상세보기' : status === 'pending' ? '승인 대기 - 클릭하여 상세보기' : '예약 가능'}
+                              className={`p-3 text-center text-xs font-medium rounded transition-all ${cellClass} ${isPast ? 'opacity-75' : ''}`}
+                              title={isPast ? `과거 날짜 (${dateStr}) - 클릭하여 상세보기` : status === 'approved' ? '예약됨 - 클릭하여 상세보기' : status === 'pending' ? '승인 대기 - 클릭하여 상세보기' : '예약 가능'}
                             >
                               <div className="truncate">{cellContent}</div>
                             </div>
@@ -1112,6 +1168,7 @@ export default function AdminFacilitiesPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </AuthCheck>
   );
 }

@@ -105,8 +105,9 @@ export default function AdminNoticesPage() {
     );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminHeader />
+    <AuthCheck requireAuth={true} requireAdmin={true}>
+      <div className="min-h-screen bg-gray-50">
+        <AdminHeader />
       <main className="py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-lg shadow-sm p-6">
@@ -335,6 +336,7 @@ export default function AdminNoticesPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </AuthCheck>
   );
 }

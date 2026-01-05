@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import AuthCheck from '@/components/AuthCheck';
 import ReservationTimeTable from './ReservationTimeTable';
 import ReservationForm from './ReservationForm';
 import ReservationList from './ReservationList';
@@ -81,10 +82,11 @@ export default function ReservationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AuthCheck requireAuth={true}>
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">시설 예약</h1>
           <p className="mt-2 text-gray-600">동아리방, 공연장, 기자재를 시간별로 예약할 수 있습니다.</p>
@@ -111,7 +113,11 @@ export default function ReservationPage() {
                 }}
                 onTimeSlotSelect={(facilityId, date, time) => {
                   setSelectedTimeSlot({ facilityId, date, time });
-                  setSelectedDate(new Date(date));
+                  // 날짜 문자열을 로컬 타임존으로 파싱 (YYYY-MM-DD 형식)
+                  // 시간을 명시적으로 12:00로 설정하여 타임존 문제 방지
+                  const [year, month, day] = date.split('-').map(Number);
+                  const localDate = new Date(year, month - 1, day, 12, 0, 0);
+                  setSelectedDate(localDate);
                   setSelectedFacility(facilityId);
                 }}
               />
@@ -131,9 +137,10 @@ export default function ReservationPage() {
         {activeTab === 'list' && (
           <ReservationList />
         )}
-      </main>
+        </main>
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </AuthCheck>
   );
 }

@@ -65,9 +65,7 @@ export default function ReservationForm({ selectedDate, selectedFacility, select
     };
 
     loadFacilities();
-    const interval = setInterval(loadFacilities, 10000); // 10초마다 업데이트
-
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (수동 새로고침만 사용)
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,11 +88,24 @@ export default function ReservationForm({ selectedDate, selectedFacility, select
         return;
       }
 
+      // 날짜를 로컬 타임존으로 포맷팅 (YYYY-MM-DD)
+      // selectedTimeSlot이 있으면 그 날짜를 직접 사용 (가장 정확)
+      let dateStr: string;
+      if (selectedTimeSlot?.date) {
+        dateStr = selectedTimeSlot.date;
+      } else {
+        // selectedTimeSlot이 없으면 selectedDate 사용
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        dateStr = `${year}-${month}-${day}`;
+      }
+
       // Supabase에 예약 저장
       const newReservation = await createReservation({
         facility_id: facility.id,
         facility_name: facility.name,
-        date: selectedDate.toISOString().split('T')[0],
+        date: dateStr,
         start_time: formData.startTime,
         end_time: formData.endTime,
         purpose: formData.purpose,
@@ -191,12 +202,23 @@ export default function ReservationForm({ selectedDate, selectedFacility, select
             예약 날짜
           </label>
           <div className="p-3 bg-gray-50 rounded-md text-gray-900">
-            {selectedDate.toLocaleDateString('ko-KR', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric',
-              weekday: 'long'
-            })}
+            {(() => {
+              // selectedTimeSlot이 있으면 그 날짜를 직접 파싱하여 표시
+              if (selectedTimeSlot?.date) {
+                const [year, month, day] = selectedTimeSlot.date.split('-').map(Number);
+                const date = new Date(year, month - 1, day);
+                const weekdays = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+                const weekday = weekdays[date.getDay()];
+                return `${year}년 ${month}월 ${day}일 ${weekday}`;
+              }
+              // selectedTimeSlot이 없으면 selectedDate 사용
+              const year = selectedDate.getFullYear();
+              const month = selectedDate.getMonth() + 1;
+              const day = selectedDate.getDate();
+              const weekdays = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+              const weekday = weekdays[selectedDate.getDay()];
+              return `${year}년 ${month}월 ${day}일 ${weekday}`;
+            })()}
           </div>
         </div>
 

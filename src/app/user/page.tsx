@@ -111,10 +111,8 @@ export default function UserPage() {
 
     loadData();
     
-    // 10초마다 업데이트
-    const interval = setInterval(loadData, 10000);
-    
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (수동 새로고침만 사용)
+    // 필요시 사용자가 직접 새로고침 버튼을 클릭하거나 페이지를 새로고침할 수 있습니다
   }, []);
 
   return (
@@ -176,15 +174,15 @@ export default function UserPage() {
               </div>
 
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-                  {[1, 2, 3, 4].map(i => (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                  {[1, 2, 3].map(i => (
                     <div key={i} className="animate-pulse">
                       <div className="h-32 bg-gray-200 rounded-lg"></div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-12">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
                   <StatCard
                     icon="ri-calendar-check-line"
                     label="승인된 예약"
@@ -198,28 +196,10 @@ export default function UserPage() {
                     gradient="from-yellow-500 to-yellow-600"
                   />
                   <StatCard
-                    icon="ri-building-line"
-                    label="등록 시설"
-                    value={stats.totalFacilities}
-                    gradient="from-green-500 to-green-600"
-                  />
-                  <StatCard
                     icon="ri-notification-line"
                     label="공지사항"
                     value={stats.totalNotices}
                     gradient="from-purple-500 to-purple-600"
-                  />
-                  <StatCard
-                    icon="ri-feedback-line"
-                    label="건의사항"
-                    value={stats.totalSuggestions}
-                    gradient="from-orange-500 to-orange-600"
-                  />
-                  <StatCard
-                    icon="ri-user-line"
-                    label="활성 회원"
-                    value={stats.activeUsers}
-                    gradient="from-pink-500 to-pink-600"
                   />
                 </div>
               )}
