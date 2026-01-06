@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getFacilities } from '@/lib/supabase/facilities';
 import type { Facility } from '@/lib/supabase/facilities';
 import { createReservation } from '@/lib/supabase/reservations';
@@ -146,19 +146,20 @@ export default function ReservationForm({ selectedDate, selectedFacility, select
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
     
     if (name === 'facility') {
       onFacilitySelect(value);
-      // 시설 변경 시 시작/종료 시간 초기화
+      // 시설 변경 시 시작/종료 시간 초기화 (한 번에 업데이트)
       setFormData(prev => ({
         ...prev,
         facility: value,
         startTime: '',
         endTime: ''
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
       }));
     }
   };
@@ -202,7 +203,7 @@ export default function ReservationForm({ selectedDate, selectedFacility, select
             예약 날짜
           </label>
           <div className="p-3 bg-gray-50 rounded-md text-gray-900">
-            {(() => {
+            {useMemo(() => {
               // selectedTimeSlot이 있으면 그 날짜를 직접 파싱하여 표시
               if (selectedTimeSlot?.date) {
                 const [year, month, day] = selectedTimeSlot.date.split('-').map(Number);
@@ -218,7 +219,7 @@ export default function ReservationForm({ selectedDate, selectedFacility, select
               const weekdays = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
               const weekday = weekdays[selectedDate.getDay()];
               return `${year}년 ${month}월 ${day}일 ${weekday}`;
-            })()}
+            }, [selectedTimeSlot?.date, selectedDate])}
           </div>
         </div>
 

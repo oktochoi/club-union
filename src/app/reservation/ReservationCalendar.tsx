@@ -50,19 +50,8 @@ export default function ReservationCalendar({ selectedDate, onDateSelect, select
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    const interval = setInterval(() => {
-      const facilitiesFromAdmin = localStorage.getItem('adminFacilities');
-      if (facilitiesFromAdmin) {
-        try {
-          const updatedFacilities = JSON.parse(facilitiesFromAdmin);
-          setFacilities(updatedFacilities);
-        } catch (error) {
-          console.error('시설 정보 업데이트 오류:', error);
-        }
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
+    // localStorage 기반 실시간 업데이트 제거 (성능 최적화)
+    // 필요시 수동 새로고침 사용
   }, []);
 
   // 승인된 예약들 (관리자가 승인한 예약들을 실시간으로 가져오기)
@@ -71,40 +60,39 @@ export default function ReservationCalendar({ selectedDate, onDateSelect, select
   // 승인 대기 중인 예약들
   const [pendingReservations, setPendingReservations] = useState<any[]>([]);
 
-  // 실시간으로 관리자의 승인된 예약을 반영
+  // 실시간으로 관리자의 승인된 예약을 반영 (성능 최적화: setInterval 제거)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    const interval = setInterval(() => {
-      const adminReservations: any[] = JSON.parse(localStorage.getItem('adminReservations') || '[]');
-      
-      // 승인된 예약들 업데이트
-      const approved = adminReservations
-        .filter((r: any) => r.status === 'approved')
-        .map((r: any) => ({
-          facility: getFacilityId(r.facility),
-          date: r.date,
-          time: r.time.split('-')[0],
-          club: r.club,
-          status: 'approved'
-        }));
-      
-      // 승인 대기 중인 예약들 업데이트
-      const pending = adminReservations
-        .filter((r: any) => r.status === 'pending')
-        .map((r: any) => ({
-          facility: getFacilityId(r.facility),
-          date: r.date,
-          time: r.time.split('-')[0],
-          club: r.club,
-          status: 'pending'
-        }));
-      
-      setApprovedReservations(approved);
-      setPendingReservations(pending);
-    }, 3000);
-
-    return () => clearInterval(interval);
+    // localStorage 기반 실시간 업데이트 제거 (성능 최적화)
+    // 필요시 수동 새로고침 사용
+    const adminReservations: any[] = JSON.parse(localStorage.getItem('adminReservations') || '[]');
+    
+    // 승인된 예약들 업데이트
+    const approved = adminReservations
+      .filter((r: any) => r.status === 'approved')
+      .map((r: any) => ({
+        facility: getFacilityId(r.facility),
+        date: r.date,
+        time: r.time.split('-')[0],
+        club: r.club,
+        status: 'approved'
+      }));
+    
+    // 승인 대기 중인 예약들 업데이트
+    const pending = adminReservations
+      .filter((r: any) => r.status === 'pending')
+      .map((r: any) => ({
+        facility: getFacilityId(r.facility),
+        date: r.date,
+        time: r.time.split('-')[0],
+        club: r.club,
+        status: 'pending'
+      }));
+    
+    setApprovedReservations(approved);
+    setPendingReservations(pending);
+    // 자동 새로고침 제거 (성능 최적화)
   }, []);
 
   // 시설명을 ID로 변환하는 헬퍼 함수

@@ -65,10 +65,7 @@ export default function AdminDashboard() {
     };
 
     loadUsers();
-
-    // 5초마다 사용자 목록 새로고침
-    const interval = setInterval(loadUsers, 5000);
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (성능 최적화)
   }, []);
 
   // 동적 통계 계산

@@ -76,8 +76,7 @@ export default function OfficeHourContent() {
     };
 
     loadRentalItems();
-    const interval = setInterval(loadRentalItems, 10000); // 10초마다 업데이트
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (성능 최적화)
   }, []);
 
   // 내 대여 신청 데이터 로드 (Supabase)
@@ -107,8 +106,7 @@ export default function OfficeHourContent() {
     };
 
     loadMyRentals();
-    const interval = setInterval(loadMyRentals, 5000); // 5초마다 업데이트
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (성능 최적화)
   }, []);
 
   // 계좌 정보 로드 (Supabase)
@@ -127,8 +125,7 @@ export default function OfficeHourContent() {
     };
 
     loadAccountInfo();
-    const interval = setInterval(loadAccountInfo, 10000); // 10초마다 업데이트
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (성능 최적화)
   }, []);
 
   const categories = [

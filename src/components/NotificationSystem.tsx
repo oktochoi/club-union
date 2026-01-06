@@ -17,12 +17,13 @@ export default function NotificationSystem() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
-  // 실시간 알림 확인
+  // 실시간 알림 확인 (성능 최적화: setInterval 제거)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    const interval = setInterval(() => {
-      const userNotifications = JSON.parse(localStorage.getItem('userNotifications') || '[]');
+    // localStorage 기반 실시간 업데이트 제거 (성능 최적화)
+    // 필요시 수동 새로고침 사용
+    const userNotifications = JSON.parse(localStorage.getItem('userNotifications') || '[]');
       
       if (userNotifications.length > 0) {
         const newNotifications = userNotifications.map((notif: any) => {
@@ -96,14 +97,12 @@ export default function NotificationSystem() {
           localStorage.removeItem('userNotifications');
         }
       }
-    }, 2000);
+    // 자동 새로고침 제거 (성능 최적화)
 
     // 알림 권한 요청
     if (typeof window !== 'undefined' && typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission();
     }
-
-    return () => clearInterval(interval);
   }, []);
 
   // 읽지 않은 알림 수 계산

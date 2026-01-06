@@ -52,9 +52,7 @@ export default function AdminReservationsPage() {
 
   useEffect(() => {
     loadReservations();
-    const interval = setInterval(loadReservations, 5000); // 5초마다 업데이트
-
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (성능 최적화)
   }, []);
 
 

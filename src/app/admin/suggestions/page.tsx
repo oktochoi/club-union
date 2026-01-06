@@ -39,8 +39,7 @@ export default function AdminSuggestionsPage() {
 
   useEffect(() => {
     loadSuggestions();
-    const interval = setInterval(loadSuggestions, 3000);
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (성능 최적화)
   }, []);
 
   const loadSuggestions = () => {

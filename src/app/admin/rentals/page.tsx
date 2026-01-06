@@ -84,8 +84,7 @@ export default function AdminRentalsPage() {
     };
 
     loadAccountInfo();
-    const interval = setInterval(loadAccountInfo, 10000); // 10초마다 업데이트
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (성능 최적화)
   }, []);
 
   // 물품 데이터 로드
@@ -110,8 +109,7 @@ export default function AdminRentalsPage() {
     };
 
     loadRentalItems();
-    const interval = setInterval(loadRentalItems, 10000); // 10초마다 업데이트
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (성능 최적화)
   }, []);
 
   // 대여 신청 데이터 로드
@@ -155,7 +153,7 @@ export default function AdminRentalsPage() {
     };
 
     loadRentalRequests();
-    const interval = setInterval(loadRentalRequests, 5000); // 5초마다 업데이트
+    // 자동 새로고침 제거 (성능 최적화)
 
     // 알림 권한 요청
     if (typeof window !== 'undefined' && Notification.permission === 'default') {

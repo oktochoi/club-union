@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getFacilities } from '@/lib/supabase/facilities';
 import type { Facility as FacilityType } from '@/lib/supabase/facilities';
 import { getReservationsByFacilityAndDate } from '@/lib/supabase/reservations';
@@ -23,8 +23,8 @@ export default function ReservationTimeTable({
   const [reservations, setReservations] = useState<any[]>([]);
   const [viewStartDate, setViewStartDate] = useState(new Date()); // 표시할 날짜 범위의 시작일
 
-  // 7일간의 날짜 배열 생성 (viewStartDate 기준)
-  const getDaysForView = () => {
+  // 7일간의 날짜 배열 생성 (viewStartDate 기준) - useMemo로 최적화
+  const days = useMemo(() => {
     const days = [];
     const startDate = new Date(viewStartDate);
     startDate.setHours(0, 0, 0, 0);
@@ -35,9 +35,7 @@ export default function ReservationTimeTable({
       days.push(date);
     }
     return days;
-  };
-
-  const days = getDaysForView();
+  }, [viewStartDate]);
 
   // 날짜 범위 이동 함수
   const moveDateRange = (direction: 'prev' | 'next' | 'today') => {
@@ -90,9 +88,8 @@ export default function ReservationTimeTable({
       if (!selectedFacility) return;
       
       try {
-        const currentDays = getDaysForView();
         const allReservations: any[] = [];
-        for (const date of currentDays) {
+        for (const date of days) {
           const dateStr = formatDate(date);
           const dayReservations = await getReservationsByFacilityAndDate(selectedFacility, dateStr);
           allReservations.push(...dayReservations);
@@ -107,7 +104,7 @@ export default function ReservationTimeTable({
       loadReservations();
       // 자동 새로고침 제거 (수동 새로고침만 사용)
     }
-  }, [selectedFacility, viewStartDate]);
+  }, [selectedFacility, days]);
 
   // 모든 시간대 수집 (모든 시설의 시간대를 합침)
   const getAllTimeSlots = () => {

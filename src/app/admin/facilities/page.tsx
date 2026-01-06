@@ -133,21 +133,13 @@ export default function AdminFacilitiesPage() {
 
   useEffect(() => {
     loadFacilities();
-    const interval = setInterval(() => {
-      loadFacilities();
-    }, 10000); // 10초마다 시설 데이터 동기화
-
-    return () => clearInterval(interval);
+    // 자동 새로고침 제거 (성능 최적화)
   }, []);
 
   useEffect(() => {
     if (selectedFacility) {
       loadReservations();
-      const interval = setInterval(() => {
-        loadReservations();
-      }, 5000); // 5초마다 예약 데이터 동기화
-
-      return () => clearInterval(interval);
+      // 자동 새로고침 제거 (성능 최적화)
     }
   }, [selectedFacility, viewStartDate]);
 
