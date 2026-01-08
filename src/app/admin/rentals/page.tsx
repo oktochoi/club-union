@@ -159,8 +159,6 @@ export default function AdminRentalsPage() {
     if (typeof window !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission();
     }
-
-    return () => clearInterval(interval);
   }, []);
 
   const handleItemSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
